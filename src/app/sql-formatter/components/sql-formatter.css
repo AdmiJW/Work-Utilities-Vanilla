@@ -1,0 +1,80 @@
+.sql-formatter {
+  background: var(--panel);
+}
+.sql-editor {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+.sql-editor .cm-editor {
+  height: 100%;
+  font-family: 'Cascadia Code', Consolas, monospace;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--panel);
+}
+.sql-editor .cm-scroller {
+  font-family: inherit;
+  line-height: 23px;
+  overflow: auto;
+}
+.sql-editor .cm-content {
+  padding: 18px 0;
+  caret-color: var(--text);
+}
+.sql-editor .cm-line {
+  padding: 0 12px;
+}
+.sql-editor .cm-gutters {
+  color: var(--muted);
+  background: var(--panel);
+  border: 0;
+  padding-right: 10px;
+}
+.sql-editor .cm-activeLine,
+.sql-editor .cm-activeLineGutter {
+  background: var(--panel-raised);
+}
+.sql-editor .cm-focused {
+  outline: none;
+}
+.sql-editor .cm-cursor {
+  border-left-color: var(--text);
+}
+.sql-editor .cm-selectionBackground,
+.sql-editor .cm-focused .cm-selectionBackground {
+  background: var(--accent-soft);
+}
+.sql-editor .cm-panels {
+  color: var(--text);
+  background: var(--panel-raised);
+  border-color: var(--border);
+}
+.sql-editor .cm-textfield,
+.sql-editor .cm-button {
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.editor-hint {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--muted);
+  font-size: 10px;
+  padding: 6px 17px;
+}
+.dark .sql-editor .ͼb {
+  color: #9fbaff;
+}
+.dark .sql-editor .ͼc {
+  color: #b4d4ff;
+}
+.dark .sql-editor .ͼe {
+  color: #70dab5;
+}
+.dark .sql-editor .ͼd {
+  color: #f0a7bf;
+}

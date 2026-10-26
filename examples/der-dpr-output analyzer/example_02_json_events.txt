@@ -1,0 +1,9 @@
+SQL Statement Run: --820175SELECT CONCAT(WebhookEvent.EventId , '|' , WebhookEvent.DateTimeCreated , '|' , WebhookEvent.TopicName , '|' , WebhookEvent.HeadersJson , '|' , WebhookEvent.PayloadJson , '|' , WebhookEvent.CorrelationId , '|' , WebhookEvent.DateTimeValidFrom , '|' , WebhookEvent.DateTimeValidTo , '|' , WebhookEvent.RetryCount) FROM WebhookEvent with (nolock) WHERE TopicName IN ('shipment.created', 'shipment.status_changed')
+MSG-9001|2026-10-05 10:30:01.0000000 +08:00|shipment.created|{"TraceId":"trace-7d91","UserContext":"{\"Origin\":\"demo-portal\",\"Roles\":[\"operator\",\"viewer\"],\"IsSandbox\":true}","ContentType":"application/json"}|{"EventName":"shipment.created","Shipment":{"ShipmentId":"SHP-2001","OrderNo":"ORD-1001","Packages":[{"WeightKg":1.2,"Fragile":false},{"WeightKg":0.5,"Fragile":true}]},"OccurredAt":"2026-10-05T10:30:00+08:00"}|corr-1001|2026-10-05 02:30:01.0000000|9999-12-31 23:59:59.9999999|0
+MSG-9002|2026-10-05 13:12:45.0000000 +08:00|shipment.status_changed|{"TraceId":"trace-8f20","UserContext":"{\"Origin\":\"demo-worker\",\"Roles\":[\"system\"],\"IsSandbox\":true}","ContentType":"application/json"}|{"EventName":"shipment.status_changed","Shipment":{"ShipmentId":"SHP-2001","OldStatus":"CREATED","NewStatus":"IN_TRANSIT","Label":"box | fragile"},"OccurredAt":"2026-10-05T13:12:44+08:00","Exception":null}|corr-1001|2026-10-05 05:12:45.0000000|9999-12-31 23:59:59.9999999|1
+
+SQL Statement Run: --820175SELECT CONCAT(DeliveryAttempt.AttemptId , '|' , DeliveryAttempt.EventId , '|' , DeliveryAttempt.HttpStatus , '|' , DeliveryAttempt.DateTimeCreated) FROM DeliveryAttempt with (nolock) WHERE EventId = 'MSG-9001'
+ATT-7001|MSG-9001|200|2026-10-05 10:30:03.1200000 +08:00
+
+SQL Statement Run: --820175SELECT CONCAT(FailedWebhook.EventId , '|' , FailedWebhook.ErrorCode , '|' , FailedWebhook.ErrorMessage) FROM FailedWebhook with (nolock) WHERE EventId IN ('MSG-9001', 'MSG-9002')
+0 rows affected

@@ -1,0 +1,188 @@
+.inspector {
+  & {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+    min-width: 260px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    scrollbar-gutter: stable;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+  }
+  .decode-controls {
+    display: flex;
+    gap: 4px;
+    padding: 10px 16px 0;
+  }
+  .decode-controls button {
+    padding: 5px 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: transparent;
+    color: var(--muted);
+    font-size: 11px;
+  }
+  .decode-controls button[aria-pressed='true'] {
+    color: var(--accent);
+    background: var(--accent-soft);
+    border-color: var(--accent);
+  }
+  .inspector-header {
+    flex-shrink: 0;
+    padding: 16px 12px 15px 16px;
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  h3 {
+    margin: 8px 0 5px;
+    font-size: 13px;
+    overflow-wrap: anywhere;
+  }
+  .inspector-header p {
+    font-size: 10px;
+    margin: 0;
+    color: var(--muted);
+  }
+  .raw-heading {
+    flex-shrink: 0;
+    padding: 12px 16px 8px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .copy-button {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+    font-size: 10px;
+    color: var(--muted);
+    background: transparent;
+    border: 0;
+    padding: 4px;
+  }
+  .raw-toggle {
+    background: transparent;
+    border: 0;
+    padding: 0;
+    color: var(--muted);
+    text-align: left;
+  }
+  .copy-button:hover {
+    color: var(--accent);
+  }
+  .raw-value {
+    flex-shrink: 0;
+    margin: 0 16px 14px;
+    min-height: 86px;
+    height: 110px;
+    max-height: 230px;
+    resize: vertical;
+    padding: 10px;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    background: var(--panel-raised);
+    color: var(--text);
+    font-size: 11px;
+    line-height: 1.8;
+    white-space: pre;
+  }
+  .copy-status {
+    margin: 0 16px 10px;
+    font-size: 10px;
+    color: var(--accent);
+  }
+  .json-section {
+    display: flex;
+    flex: 1 0 280px;
+    flex-direction: column;
+    min-height: 280px;
+    border-top: 1px solid var(--border);
+  }
+  .json-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 12px 10px 16px;
+    gap: 8px;
+  }
+  .json-section > :not(.tree-body):not(.pretty-value) {
+    flex-shrink: 0;
+  }
+  .json-heading > span {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 11px;
+    font-weight: 600;
+  }
+  .view-toggle {
+    display: flex;
+    border: 1px solid var(--border);
+    background: var(--panel-raised);
+    border-radius: 5px;
+    padding: 2px;
+  }
+  .view-toggle button {
+    background: transparent;
+    border: 0;
+    color: var(--muted);
+    font-size: 9px;
+    padding: 4px 7px;
+    border-radius: 3px;
+  }
+  .view-toggle button.active {
+    background: var(--panel);
+    color: var(--accent);
+    box-shadow: 0 1px 3px #0000000c;
+  }
+  .tree-body {
+    overflow: auto;
+    flex: 1 0 180px;
+    min-height: 180px;
+    padding: 5px 12px 16px 8px;
+  }
+  .inspection-hint {
+    padding: 8px 16px;
+    font-size: 11px;
+    line-height: 1.8;
+    color: var(--muted);
+  }
+  .pretty-value {
+    border: 0;
+    border-top: 1px solid var(--border);
+    padding: 12px 16px;
+    flex: 1 0 180px;
+    min-height: 180px;
+    resize: none;
+    background: var(--panel);
+    color: var(--text);
+    font-size: 11px;
+    line-height: 1.8;
+    white-space: pre;
+  }
+  .pretty-controls {
+    text-align: right;
+    padding-right: 12px;
+  }
+  .nested-breadcrumb {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 5px 12px 9px 16px;
+    font-size: 10px;
+    color: var(--muted);
+  }
+  .nested-breadcrumb button {
+    border: 0;
+    background: transparent;
+    color: var(--accent);
+    display: flex;
+    gap: 4px;
+    align-items: center;
+    font-size: inherit;
+  }
+}

@@ -1,0 +1,7 @@
+SQL Statement Run: --820178SELECT CONCAT(Customer.CustomerId , '|' , Customer.DisplayName , '|' , PurchaseOrder.OrderNo , '|' , PurchaseOrder.TotalAmount , '|' , Payment.PaymentStatus) FROM Customer with (nolock) INNER JOIN PurchaseOrder with (nolock) ON PurchaseOrder.CustomerId = Customer.CustomerId LEFT JOIN Payment with (nolock) ON Payment.OrderNo = PurchaseOrder.OrderNo WHERE Customer.CustomerId IN ('CUS-1001', 'CUS-1002') ORDER BY Customer.CustomerId, PurchaseOrder.OrderNo
+CUS-1001|Alex Tan|ORD-1001|128.50|SETTLED
+CUS-1001|Alex Tan|ORD-1003|24.99|PENDING
+CUS-1002|River Lim|ORD-1002|79.00|SETTLED
+
+SQL Statement Run: --820178SELECT CONCAT(Customer.CustomerId , '|' , Customer.DisplayName , '|' , PurchaseOrder.OrderNo , '|' , Payment.PaymentStatus) FROM Customer with (nolock) INNER JOIN PurchaseOrder with (nolock) ON PurchaseOrder.CustomerId = Customer.CustomerId LEFT JOIN Payment with (nolock) ON Payment.OrderNo = PurchaseOrder.OrderNo WHERE Customer.CustomerId = 'CUS-9999'
+0 rows affected

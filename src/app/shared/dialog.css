@@ -1,0 +1,80 @@
+.app-dialog {
+  width: min(680px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  color: var(--text);
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  padding: 0;
+  box-shadow: 0 25px 90px #0003;
+}
+.app-dialog::backdrop {
+  background: #0b122075;
+  backdrop-filter: blur(3px);
+}
+.app-dialog > header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--border);
+}
+.app-dialog h2 {
+  font-size: 17px;
+  font-weight: 600;
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+.dialog-content {
+  padding: 20px 22px;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.app-dialog > footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 9px;
+  padding: 16px 22px;
+  border-top: 1px solid var(--border);
+}
+.app-dialog input:not([type='checkbox']),
+.app-dialog textarea {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--panel-raised);
+  color: var(--text);
+  padding: 9px 11px;
+}
+.app-dialog textarea {
+  white-space: pre;
+}
+.compatibility-list {
+  display: grid;
+  grid-template-columns: 135px 1fr;
+  gap: 10px 18px;
+  margin: 0;
+}
+.compatibility-list dt {
+  font-weight: 600;
+  color: var(--muted);
+}
+.compatibility-list dd {
+  margin: 0;
+}
+.license-text {
+  font-size: 10px;
+  overflow: auto;
+  white-space: pre-wrap;
+  max-height: 300px;
+}
+@media (max-width: 600px) {
+  .compatibility-list {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+  .compatibility-list dd {
+    margin-bottom: 12px;
+  }
+}

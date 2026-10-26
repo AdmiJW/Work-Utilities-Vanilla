@@ -1,0 +1,87 @@
+@import './base.css';
+@import './app/workspace/components/workspace.css';
+@import './app/workspace/components/sidebar.css';
+@import './app/workspace/components/workspace-home.css';
+@import './app/workspace/components/session-library.css';
+@import './app/shared/dialog.css';
+@import './app/sql-formatter/components/sql-formatter.css';
+@import './app/output-analyzer/components/output-analyzer.css';
+@import './app/output-analyzer/components/cell-inspector.css';
+@import './app/output-analyzer/components/json-tree.css';
+@import './app/output-analyzer/components/analyzer-layout.css';
+
+[hidden] {
+  display: none !important;
+}
+.icon {
+  flex-shrink: 0;
+  vertical-align: middle;
+}
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 7px 11px;
+  color: var(--text);
+  background: var(--panel);
+  font-size: 12px;
+}
+button:hover:not(:disabled) {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+button:disabled {
+  opacity: 0.55;
+}
+button.primary {
+  color: #fff;
+  border-color: #2563eb;
+  background: #2563eb;
+}
+button.primary:hover:not(:disabled) {
+  color: #fff;
+  background: #1d4ed8;
+}
+button[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.tool-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.tool-heading h1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.hint {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.8;
+}
+textarea,
+input {
+  color: var(--text);
+}
+button,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+.window-message {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  text-align: center;
+}

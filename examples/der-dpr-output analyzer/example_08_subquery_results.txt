@@ -1,0 +1,3 @@
+SQL Statement Run: --820180SELECT CONCAT(Customer.CustomerId , '|' , Customer.DisplayName , '|' , (SELECT COUNT(*) FROM PurchaseOrder WHERE PurchaseOrder.CustomerId = Customer.CustomerId) , '|' , (SELECT MAX(PurchaseOrder.DateTimeCreated) FROM PurchaseOrder WHERE PurchaseOrder.CustomerId = Customer.CustomerId)) FROM Customer with (nolock) WHERE Customer.CustomerId IN (SELECT PurchaseOrder.CustomerId FROM PurchaseOrder with (nolock) WHERE PurchaseOrder.OrderStatus = 'PENDING') ORDER BY Customer.CustomerId
+CUS-1001|Alex Tan|2|2026-10-04 16:30:19.7654321 +08:00
+CUS-1002|River Lim|1|2026-10-03 11:45:02.0000000 +08:00

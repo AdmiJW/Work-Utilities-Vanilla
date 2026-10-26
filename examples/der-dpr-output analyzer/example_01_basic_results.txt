@@ -1,0 +1,14 @@
+SQL Statement Run: --820174SELECT CONCAT(Customer.CustomerId , '|' , Customer.Email , '|' , Customer.DisplayName , '|' , Customer.AccountStatus , '|' , Customer.DateTimeCreated) FROM Customer with (nolock) WHERE AccountStatus = 'ACTIVE'
+CUS-1001|alex.tan@example.test|Alex Tan|ACTIVE|2026-10-01 09:15:30.1234567 +08:00
+CUS-1002|river.lim@example.test||ACTIVE|2026-10-02 14:08:11.0000000 +08:00
+
+SQL Statement Run: --820174SELECT CONCAT(PurchaseOrder.OrderNo , '|' , PurchaseOrder.CustomerId , '|' , PurchaseOrder.TotalAmount , '|' , PurchaseOrder.Currency , '|' , PurchaseOrder.DateTimeCreated) FROM PurchaseOrder with (nolock) WHERE CustomerId IN ('CUS-1001', 'CUS-1002')
+ORD-1001|CUS-1001|128.50|SGD|2026-10-03 11:00:00.5000000 +08:00
+ORD-1002|CUS-1002|79.00|SGD|2026-10-03 11:45:02.0000000 +08:00
+ORD-1003|CUS-1001|24.99|USD|2026-10-04 16:30:19.7654321 +08:00
+
+SQL Statement Run: --820174SELECT CONCAT(RefundRequest.RequestId , '|' , RefundRequest.OrderNo , '|' , RefundRequest.Reason) FROM RefundRequest with (nolock) WHERE OrderNo IN ('ORD-1001', 'ORD-1002', 'ORD-1003')
+0 rows affected
+
+SQL Statement Run: --820174SELECT CONCAT(DailySalesSummary.ReportDate , '|' , DailySalesSummary.TotalOrders , '|' , DailySalesSummary.ReportStatus) FROM DailySalesSummary with (nolock) WHERE ReportDate = '2026-10-04'
+2026-10-04|3|COMPLETED

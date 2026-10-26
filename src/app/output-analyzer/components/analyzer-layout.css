@@ -1,0 +1,72 @@
+.analyzer .inspector-toggle {
+  position: absolute;
+  right: 0;
+  top: 12px;
+  z-index: 2;
+  width: 20px;
+  height: 32px;
+  padding: 0;
+  border-radius: 5px 0 0 5px;
+  color: var(--muted);
+  background: var(--panel-raised);
+}
+.analyzer .overlay-inspector {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: min(420px, 90%);
+  height: 100%;
+  z-index: 3;
+  box-shadow: -10px 0 35px #0002;
+}
+.analyzer .inspector {
+  min-width: 0;
+}
+.analyzer .inspector > .decode-controls {
+  flex-shrink: 0;
+}
+.analyzer .summary-scroll {
+  min-height: 0;
+  overflow: auto;
+  flex: 1;
+}
+.analyzer .summary-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 11px;
+}
+.analyzer .summary-table th,
+.analyzer .summary-table td {
+  padding: 10px 14px;
+  text-align: left;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+.analyzer .summary-table th {
+  background: var(--panel-raised);
+  color: var(--muted);
+  position: sticky;
+  top: 0;
+  white-space: nowrap;
+}
+.analyzer .summary-table td {
+  white-space: pre-wrap;
+}
+.analyzer .summary-table .raw-diagnostic {
+  max-width: 600px;
+  min-width: 300px;
+  overflow-wrap: anywhere;
+}
+.analyzer .summary-table .sql-summary {
+  min-width: 300px;
+}
+.analyzer.stale-results .grid-area {
+  opacity: 0.65;
+}
+.analyzer .notice.error {
+  display: block;
+}
+.inspector .json-tree {
+  display: block;
+}

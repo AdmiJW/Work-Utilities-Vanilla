@@ -1,0 +1,37 @@
+SQL Statement Run: --820175SELECT CONCAT(Customer.CustomerId , '|' , Customer.AccountStatus , '|' , Customer.DateTimeUpdated) FROM Customer with (nolock) WHERE CustomerId = 'CUS-1002'
+CUS-1002|ACTIVE|2026-10-02 14:08:11.0000000 +08:00
+
+SQL Statement Run: --820175UPDATE Customer SET AccountStatus = 'SUSPENDED', DateTimeUpdated = '2026-10-05 09:30:00.0000000 +08:00' WHERE CustomerId = 'CUS-1002' AND AccountStatus = 'ACTIVE'
+1 rows affected
+
+SQL Statement Run: --820175SELECT CONCAT(Customer.CustomerId , '|' , Customer.AccountStatus , '|' , Customer.DateTimeUpdated) FROM Customer with (nolock) WHERE CustomerId = 'CUS-1002'
+CUS-1002|SUSPENDED|2026-10-05 09:30:00.0000000 +08:00
+
+SQL Statement Run: --820175SELECT CONCAT(PurchaseOrder.OrderNo , '|' , PurchaseOrder.OrderStatus , '|' , PurchaseOrder.ReviewReason) FROM PurchaseOrder with (nolock) WHERE OrderNo IN ('ORD-1002', 'ORD-1003')
+ORD-1002|PENDING|Manual review requested
+ORD-1003|PENDING|Manual review requested
+
+SQL Statement Run: --820175UPDATE PurchaseOrder SET OrderStatus = 'REVIEW', ReviewReason = 'Address verification', DateTimeUpdated = '2026-10-05 09:31:00.0000000 +08:00' WHERE OrderNo IN ('ORD-1002', 'ORD-1003') AND OrderStatus = 'PENDING'
+2 rows affected
+
+SQL Statement Run: --820175SELECT CONCAT(PurchaseOrder.OrderNo , '|' , PurchaseOrder.OrderStatus , '|' , PurchaseOrder.ReviewReason , '|' , PurchaseOrder.DateTimeUpdated) FROM PurchaseOrder with (nolock) WHERE OrderNo IN ('ORD-1002', 'ORD-1003')
+ORD-1002|REVIEW|Address verification|2026-10-05 09:31:00.0000000 +08:00
+ORD-1003|REVIEW|Address verification|2026-10-05 09:31:00.0000000 +08:00
+
+SQL Statement Run: --820175SELECT CONCAT(RefundRequest.RequestId , '|' , RefundRequest.RequestStatus) FROM RefundRequest with (nolock) WHERE RequestId = 'RFD-1204'
+RFD-1204|OPEN
+
+SQL Statement Run: --820175UPDATE RefundRequest SET RequestStatus = 'CANCELLED' WHERE RequestId = 'RFD-1204' AND RequestStatus = 'OPEN'
+1 rows affected
+
+SQL Statement Run: --820175SELECT CONCAT(RefundRequest.RequestId , '|' , RefundRequest.RequestStatus) FROM RefundRequest with (nolock) WHERE RequestId = 'RFD-1204'
+RFD-1204|CANCELLED
+
+SQL Statement Run: --820175SELECT CONCAT(CustomerNote.NoteId , '|' , CustomerNote.NoteText , '|' , CustomerNote.IsObsolete) FROM CustomerNote with (nolock) WHERE NoteId = 'NOTE-OLD-01'
+NOTE-OLD-01|Superseded by the new address|1
+
+SQL Statement Run: --820175DELETE FROM CustomerNote WHERE NoteId = 'NOTE-OLD-01' AND IsObsolete = 1
+1 rows affected
+
+SQL Statement Run: --820175SELECT CONCAT(CustomerNote.NoteId , '|' , CustomerNote.NoteText , '|' , CustomerNote.IsObsolete) FROM CustomerNote with (nolock) WHERE NoteId = 'NOTE-OLD-01'
+0 rows affected

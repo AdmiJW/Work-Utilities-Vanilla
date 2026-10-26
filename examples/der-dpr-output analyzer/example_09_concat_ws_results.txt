@@ -1,0 +1,8 @@
+SQL Statement Run: --820181SELECT CONCAT_WS('|', Customer.CustomerId, Customer.Email, Customer.DisplayName, Customer.AccountStatus, CONVERT(varchar(33), Customer.DateTimeCreated, 127), CASE WHEN Customer.MarketingConsent = 1 THEN 'OPTED_IN' ELSE 'OPTED_OUT' END) FROM Customer with (nolock) WHERE Customer.CustomerId IN ('CUS-1001', 'CUS-1002', 'CUS-1003', 'CUS-1004') ORDER BY Customer.CustomerId
+CUS-1001|alex.tan@example.test|Alex Tan|ACTIVE|2026-10-01T09:15:30.1234567|OPTED_IN
+CUS-1002|river.lim@example.test||ACTIVE|2026-10-02T14:08:11.0000000|OPTED_OUT
+CUS-1003|jules.ng@example.test|Jules Ng|SUSPENDED|2026-10-03T16:42:00.5000000|OPTED_IN
+CUS-1004|kai.wong@example.test|SUSPENDED|2026-10-04T10:20:00.0000000|OPTED_OUT
+
+SQL Statement Run: --820181SELECT CONCAT_WS('|', Customer.CustomerId, Customer.Email, Customer.DisplayName, Customer.AccountStatus) FROM Customer with (nolock) WHERE Customer.CustomerId = 'CUS-9999'
+0 rows affected
