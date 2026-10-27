@@ -11,10 +11,11 @@ export class SessionAutosave {
     this.revision = 0;
   }
 
-  schedule(summary, document) {
+  schedule(summary, document, images = []) {
     this.pending.set(summary.id, {
       summary: structuredClone(summary),
       document: structuredClone(document),
+      images: structuredClone(images),
       revision: ++this.revision,
     });
     clearTimeout(this.timers.get(summary.id));
@@ -36,7 +37,9 @@ export class SessionAutosave {
           while (this.pending.has(key)) {
             const snapshot = this.pending.get(key);
             try {
-              await this.repository.save(snapshot.summary, snapshot.document);
+              if (snapshot.images.length)
+                await this.repository.save(snapshot.summary, snapshot.document, snapshot.images);
+              else await this.repository.save(snapshot.summary, snapshot.document);
               if (this.pending.get(key)?.revision === snapshot.revision) this.pending.delete(key);
             } catch (error) {
               success = false;

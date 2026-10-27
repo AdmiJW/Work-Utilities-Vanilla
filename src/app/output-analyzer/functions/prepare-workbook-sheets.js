@@ -1,12 +1,14 @@
-function prepareWorkbookSheets(result) {
+import { resultSheetNames, excelSheetName } from './result-sheet-names.js';
+import { tableHeaders } from './table-headers.js';
+
+function prepareWorkbookSheets(result, customNames = {}) {
+  const labels = resultSheetNames(result.statements, customNames);
+  const used = new Set(['_STATEMENTS', '_DIAGNOSTICS']);
   const sheets = result.statements
     .filter((statement) => statement.kind === 'SELECT')
     .map((statement) => ({
-      name: [...`${String(statement.index).padStart(2, '0')} ${statement.tableName}`]
-        .map((character) => ('\\/*?:[]'.includes(character) ? '_' : character))
-        .join('')
-        .slice(0, 31)
-        .replace(/'+$/, ''),
+      name: excelSheetName(labels.get(statement.index), used),
+      tableName: `Result_${statement.index}`,
       headerRow: 7,
       filterColumns: statement.columns.length,
       rows: [
@@ -20,8 +22,8 @@ function prepareWorkbookSheets(result) {
         ],
         [],
         statement.columns.length
-          ? statement.columns.map((column) => column.name)
-          : ['Unsupported projection \u2014 raw output is in Diagnostics'],
+          ? tableHeaders(statement.columns.map((column) => column.name))
+          : ['No returned data: column names and count could not be inferred.'],
         ...statement.rows.map((row) => row.values),
       ],
     }));
@@ -29,6 +31,7 @@ function prepareWorkbookSheets(result) {
   if (summaries.length)
     sheets.push({
       name: '_Statements',
+      tableName: 'StatementData',
       headerRow: 1,
       filterColumns: 6,
       rows: [
@@ -46,6 +49,7 @@ function prepareWorkbookSheets(result) {
   if (result.diagnostics.length)
     sheets.push({
       name: '_Diagnostics',
+      tableName: 'DiagnosticData',
       headerRow: 1,
       filterColumns: 4,
       rows: [

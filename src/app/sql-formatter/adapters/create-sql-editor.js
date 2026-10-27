@@ -79,6 +79,8 @@ export function createSqlEditor(host, source, options, changed, viewChanged) {
         wrapping.of(options.wordWrap ? EditorView.lineWrapping : []),
         appearance.of(EditorView.theme({}, { dark: options.dark })),
         EditorView.updateListener.of((update) => {
+          if (update.selectionSet || update.docChanged)
+            host.classList.toggle('has-selection', !update.state.selection.main.empty);
           if (
             update.docChanged ||
             update.transactions.some((transaction) =>
@@ -98,6 +100,7 @@ export function createSqlEditor(host, source, options, changed, viewChanged) {
     }),
   });
   const text = () => editor.state.doc.toString().replaceAll('\n', editor.state.field(lineEnding));
+  host.classList.toggle('has-selection', !editor.state.selection.main.empty);
   editor.scrollDOM.scrollTop = options.scrollTop ?? 0;
   const scroll = () => viewChanged({ scrollTop: editor.scrollDOM.scrollTop });
   editor.scrollDOM.addEventListener('scroll', scroll);

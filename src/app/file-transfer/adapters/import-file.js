@@ -49,27 +49,57 @@ export function chooseImportMode() {
 }
 
 export function handleFileDrop(host, importFiles) {
+  let depth = 0;
+  const isFile = (event) => [...(event.dataTransfer?.types ?? [])].includes('Files');
   const over = (event) => {
-    if ([...event.dataTransfer.types].includes('Files')) {
+    if (isFile(event)) {
       event.preventDefault();
       host.classList.add('file-drag-over');
     }
   };
-  const leave = () => host.classList.remove('file-drag-over');
+  const reset = () => {
+    depth = 0;
+    host.classList.remove('file-drag-over');
+  };
+  const enter = (event) => {
+    if (isFile(event)) {
+      depth++;
+      over(event);
+    }
+  };
+  const leave = (event) => {
+    if (isFile(event) && --depth <= 0) reset();
+  };
   const drop = (event) => {
+    if (!isFile(event)) return;
     event.preventDefault();
     event.stopPropagation();
-    leave();
+    reset();
     if (event.dataTransfer.files.length) void importFiles([...event.dataTransfer.files]);
   };
-  host.addEventListener('dragenter', over);
+  host.addEventListener('dragenter', enter);
   host.addEventListener('dragover', over);
   host.addEventListener('dragleave', leave);
   host.addEventListener('drop', drop, true);
+  window.addEventListener('dragend', reset);
+  window.addEventListener('blur', reset);
+  const exit = (event) => {
+    if (
+      !event.relatedTarget &&
+      (event.target === document || event.target === document.documentElement)
+    )
+      reset();
+  };
+  window.addEventListener('dragleave', exit);
+  window.addEventListener('drop', reset);
   return () => {
-    host.removeEventListener('dragenter', over);
+    host.removeEventListener('dragenter', enter);
     host.removeEventListener('dragover', over);
     host.removeEventListener('dragleave', leave);
     host.removeEventListener('drop', drop, true);
+    window.removeEventListener('dragend', reset);
+    window.removeEventListener('blur', reset);
+    window.removeEventListener('dragleave', exit);
+    window.removeEventListener('drop', reset);
   };
 }

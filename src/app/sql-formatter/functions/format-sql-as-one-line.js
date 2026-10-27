@@ -30,6 +30,6 @@ function formatSqlAsOneLine(source) {
       }
       return `${result.trim()};`;
     })
-    .join('\n');
+    .join('\n\n');
 }
 export { formatSqlAsOneLine };

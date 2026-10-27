@@ -10,6 +10,7 @@ import { downloadApplication, openCompatibility } from '../../portable-app/publi
 import { createSessionTabs } from './session-tabs.js';
 import { renderWorkspaceHome } from './workspace-home.js';
 import { openSessionLibrary } from './session-library.js';
+import { openDebugDialog } from './debug-dialog.js';
 
 export function mountWorkspace(root, state, lock) {
   const views = new Map();
@@ -58,6 +59,7 @@ export function mountWorkspace(root, state, lock) {
         title: 'Browser compatibility',
       }),
       theme,
+      button('Debug', () => openDebugDialog(state)),
     ),
   );
   const notice = element('div', { className: 'notice error', role: 'alert', hidden: true });

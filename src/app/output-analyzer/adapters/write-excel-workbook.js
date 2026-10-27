@@ -12,11 +12,17 @@ async function writeExcelWorkbook(sheets) {
       });
     }
     worksheet.views = [{ state: 'frozen', ySplit: sheet.headerRow }];
-    if (sheet.filterColumns)
-      worksheet.autoFilter = {
-        from: { row: sheet.headerRow, column: 1 },
-        to: { row: sheet.headerRow, column: sheet.filterColumns },
-      };
+    if (sheet.filterColumns) {
+      worksheet.addTable({
+        name: sheet.tableName,
+        ref: `A${sheet.headerRow}`,
+        headerRow: true,
+        totalsRow: false,
+        style: { theme: 'TableStyleMedium2', showRowStripes: true },
+        columns: sheet.rows[sheet.headerRow - 1].map((name) => ({ name, filterButton: true })),
+        rows: sheet.rows.slice(sheet.headerRow),
+      });
+    }
     const header = worksheet.getRow(sheet.headerRow);
     header.font = { bold: true, color: { argb: 'FFFFFFFF' } };
     header.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2563EB' } };

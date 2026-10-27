@@ -42,6 +42,7 @@ export class SessionLifecycle {
         : state.summaries.map((item) => (removed.has(item.id) ? { ...item, isOpen: false } : item));
       state.order = order;
       for (const id of removed) state.documents.delete(id);
+      state.images.release([...removed]);
       state.busy = false;
       if (activeId !== previousActive) {
         state.activeId = null;
@@ -50,6 +51,13 @@ export class SessionLifecycle {
       state.notify();
       return true;
     } catch (error) {
+      // Deletion cancels pending writes before its transaction. If that transaction
+      // fails, requeue live documents so a later close cannot archive stale data.
+      if (permanently)
+        for (const summary of targets) {
+          const document = state.document(summary.id);
+          if (document) state.autosave.schedule(summary, document, state.images.pending(document));
+        }
       state.fail(error);
       return false;
     } finally {

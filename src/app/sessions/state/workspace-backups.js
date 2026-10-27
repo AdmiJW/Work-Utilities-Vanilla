@@ -1,4 +1,6 @@
 import { createWorkspaceBackup, readWorkspaceBackup } from '../functions/workspace-backup.js';
+import { exportBackupImages, restoreBackupImages } from '../functions/backup-images.js';
+import { validateImageBlob } from '../../shared/image-data.js';
 
 export class WorkspaceBackups {
   constructor(state) {
@@ -27,7 +29,13 @@ export class WorkspaceBackups {
           return structuredClone(document);
         }),
       );
-      return createWorkspaceBackup(summaries, documents, workspace, appearance);
+      return createWorkspaceBackup(
+        summaries,
+        documents,
+        workspace,
+        appearance,
+        await exportBackupImages(state, documents),
+      );
     } finally {
       state.busy = false;
       state.notify();
@@ -47,10 +55,12 @@ export class WorkspaceBackups {
     state.cancelNavigation();
     state.notify();
     try {
+      for (const { blob } of restoreBackupImages(validated)) await validateImageBlob(blob);
       await state.autosave.flush();
       await state.preferenceQueue;
       await state.repository.replaceWorkspace(validated);
       await state.autosave.discard(state.summaries.map((item) => item.id));
+      state.images.cache.clear();
       state.documents = new Map(
         validated.documents.map((document) => [document.id, structuredClone(document)]),
       );

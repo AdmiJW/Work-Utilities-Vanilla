@@ -1,5 +1,8 @@
 import { element, button, clear, message } from '../../shared/dom.js';
 import { icon } from '../../shared/icons.js';
+import { createExportFilename } from '../../sessions/public-api.js';
+import { createSidePanelLayout } from '../../shared/side-panel-layout.js';
+import { createUnitTestPanel } from './unit-test-panel.js';
 import {
   chooseFile,
   chooseImportMode,
@@ -12,7 +15,7 @@ import { prettifySql } from '../functions/prettify-sql.js';
 import { formatSqlAsOneLine } from '../functions/format-sql-as-one-line.js';
 
 export function createSqlFormatter(state, id) {
-  const heading = element('h1');
+  const filename = createExportFilename(state, id, '.sql');
   const notice = element('div', { role: 'alert', className: 'notice error', hidden: true });
   const host = element('div', { className: 'sql-editor' });
   const document = state.document(id);
@@ -45,6 +48,7 @@ export function createSqlFormatter(state, id) {
       if (!mode || !alive) return;
       if (mode === 'replace') editor.replace(value);
       else editor.insert(value, selection);
+      if (mode === 'replace') state.setFileName(id, files[0].name, false);
       notice.hidden = true;
       editor.focus();
     } catch (error) {
@@ -61,13 +65,30 @@ export function createSqlFormatter(state, id) {
     },
     { 'aria-pressed': wrapped },
   );
+  const stage = element('div', { className: 'sql-stage' });
+  const images = createUnitTestPanel(state, id, () =>
+    state.updateOptions(id, { unitTestOpen: false }),
+  );
+  const layout = createSidePanelLayout(stage, host, {
+    width: document.options.unitTestWidth,
+    label: 'Resize Unit Test panel',
+    changed: (unitTestWidth) => state.updateOptions(id, { unitTestWidth }),
+  });
+  const unitTest = button(
+    'Unit Test',
+    () => {
+      state.updateOptions(id, { unitTestOpen: !state.document(id).options.unitTestOpen });
+      if (state.document(id).options.unitTestOpen) images.focus();
+    },
+    { 'aria-expanded': false },
+  );
   const view = element(
     'section',
     { className: 'sql-formatter tool-view', 'aria-label': 'SQL Formatter' },
     element(
       'div',
       { className: 'tool-toolbar' },
-      element('div', { className: 'tool-heading' }, icon('code', 19), heading),
+      element('div', { className: 'tool-heading' }, icon('code', 19), filename.element),
       element(
         'div',
         { className: 'toolbar-actions' },
@@ -76,17 +97,16 @@ export function createSqlFormatter(state, id) {
           if (file) await importFiles([file]);
         }),
         wrap,
+        unitTest,
         button('Prettify', () => format(prettifySql)),
         button('One-line', () => format(formatSqlAsOneLine)),
-        button(
-          'Export SQL',
-          () => exportSql(editor.text(), state.summaries.find((item) => item.id === id).name),
-          { className: 'primary' },
-        ),
+        button('Export SQL', () => exportSql(editor.text(), state.fileName(id)), {
+          className: 'primary',
+        }),
       ),
     ),
     notice,
-    host,
+    stage,
     element(
       'div',
       { className: 'editor-hint' },
@@ -98,7 +118,12 @@ export function createSqlFormatter(state, id) {
   return {
     element: view,
     update() {
-      heading.textContent = state.summaries.find((item) => item.id === id)?.name ?? '';
+      filename.update();
+      const open = !!state.document(id)?.options.unitTestOpen;
+      unitTest.textContent = `Unit Test (${state.document(id)?.unitTestImages?.length ?? 0})`;
+      unitTest.setAttribute('aria-expanded', String(open));
+      layout.show(open ? images.element : null);
+      if (open) images.update();
       wrap.setAttribute('aria-pressed', String(wrapped));
       if (dark !== (state.appearance.theme === 'dark')) {
         dark = !dark;
@@ -113,6 +138,8 @@ export function createSqlFormatter(state, id) {
     dispose() {
       alive = false;
       stopDrop();
+      images.dispose();
+      layout.dispose();
       editor.dispose();
       clear(view);
     },

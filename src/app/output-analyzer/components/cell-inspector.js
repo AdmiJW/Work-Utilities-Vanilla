@@ -57,6 +57,9 @@ export function createCellInspector(initialMode, modeChanged, closed) {
   };
   const treeButton = button('Tree', () => setView('tree'), { 'aria-pressed': true });
   const prettyButton = button('Pretty', () => setView('pretty'), { 'aria-pressed': false });
+  const copyJson = button('Copy JSON', () => copy(current?.inspection.pretty ?? ''), {
+    className: 'copy-button',
+  });
   const json = element(
     'section',
     { className: 'json-section' },
@@ -71,13 +74,7 @@ export function createCellInspector(initialMode, modeChanged, closed) {
     hint,
     tree,
     pretty,
-    element(
-      'div',
-      { className: 'pretty-controls' },
-      button('Copy JSON', () => copy(current?.inspection.pretty ?? ''), {
-        className: 'copy-button',
-      }),
-    ),
+    element('div', { className: 'pretty-controls' }, copyJson),
   );
   const chooseMode = (value) => {
     if (value !== mode) {
@@ -132,6 +129,7 @@ export function createCellInspector(initialMode, modeChanged, closed) {
     treeButton.classList.toggle('active', view === 'tree');
     prettyButton.classList.toggle('active', view === 'pretty');
     const valid = !!current?.inspection.valid;
+    copyJson.disabled = !valid;
     hint.hidden = valid;
     if (current && !valid)
       hint.textContent =

@@ -1,6 +1,9 @@
+import { createSession } from './session-creation.js';
 import { SessionAutosave } from './session-autosave.js';
 import { SessionLifecycle } from './session-lifecycle.js';
 import { nextViewedAt, recentSessions } from '../functions/session-recency.js';
+import { SessionImages } from './session-images.js';
+import { normalizeBaseName, sessionFileName } from '../functions/session-filename.js';
 
 export class SessionState extends EventTarget {
   constructor(repository) {
@@ -22,6 +25,7 @@ export class SessionState extends EventTarget {
     this.preferenceQueue = Promise.resolve();
     this.autosave = new SessionAutosave(repository, () => this.notify());
     this.lifecycle = new SessionLifecycle(this);
+    this.images = new SessionImages(this);
   }
 
   notify() {
@@ -76,32 +80,8 @@ export class SessionState extends EventTarget {
     this.openingError = '';
   }
 
-  async create(toolId, name, source = '') {
-    if (this.busy) return null;
-    this.cancelNavigation();
-    const id = crypto.randomUUID();
-    const number = ++this.counters[toolId];
-    const title = toolId === 'sql-formatter' ? 'SQL Formatter' : 'Output Analyzer';
-    const now = Date.now();
-    const summary = {
-      id,
-      toolId,
-      name: name ?? `${title} ${String(number).padStart(2, '0')}`,
-      createdAt: now,
-      updatedAt: now,
-      lastViewedAt: nextViewedAt(this.summaries),
-      isOpen: true,
-    };
-    const document = { id, schemaVersion: 1, source, revision: 0, options: {} };
-    this.summaries = [...this.summaries, summary];
-    this.documents.set(id, document);
-    this.order.push(id);
-    this.activeId = id;
-    this.autosave.schedule(summary, document);
-    this.persistWorkspace();
-    this.notify();
-    await this.autosave.flush(id);
-    return id;
+  create(toolId, name, source = '', initial = {}) {
+    return createSession(this, toolId, name, source, initial);
   }
 
   async activate(id, recordView = true) {
@@ -126,7 +106,14 @@ export class SessionState extends EventTarget {
       const summary = this.summaries.find((item) => item.id === id);
       if (!summary || this.busy) return false;
       const lastViewedAt = recordView ? nextViewedAt(this.summaries) : summary.lastViewedAt;
-      this.documents.set(id, this.document(id) ?? document);
+      this.documents.set(
+        id,
+        this.document(id) ?? {
+          ...document,
+          fileBaseName: sessionFileName(document, summary),
+          fileNameCustomized: document.fileNameCustomized ?? false,
+        },
+      );
       this.summaries = this.summaries.map((item) =>
         item.id === id
           ? { ...item, isOpen: true, ...(lastViewedAt === undefined ? {} : { lastViewedAt }) }
@@ -163,6 +150,24 @@ export class SessionState extends EventTarget {
     this.touch(id);
   }
 
+  fileName(id) {
+    return sessionFileName(
+      this.document(id),
+      this.summaries.find((item) => item.id === id),
+    );
+  }
+
+  setFileName(id, value, customized = true) {
+    const document = this.document(id);
+    const fileBaseName = normalizeBaseName(value);
+    if (this.busy || !document || !fileBaseName || (!customized && document.fileNameCustomized))
+      return;
+    if (document.fileBaseName === fileBaseName && (!customized || document.fileNameCustomized))
+      return;
+    this.documents.set(id, { ...document, fileBaseName, fileNameCustomized: customized });
+    this.touch(id);
+  }
+
   updateOptions(id, options) {
     if (this.busy) return;
     const document = this.document(id);
@@ -180,7 +185,13 @@ export class SessionState extends EventTarget {
   rename(id, name) {
     if (this.busy || !name?.trim()) return;
     this.summaries = this.summaries.map((item) =>
-      item.id === id ? { ...item, name: name.trim() } : item,
+      item.id === id
+        ? {
+            ...item,
+            legacyFileBaseName: item.legacyFileBaseName ?? this.fileName(id),
+            name: name.trim(),
+          }
+        : item,
     );
     this.touch(id);
     if (!this.document(id)) {
@@ -197,7 +208,8 @@ export class SessionState extends EventTarget {
       item.id === id ? { ...item, updatedAt: Date.now() } : item,
     );
     const summary = this.summaries.find((item) => item.id === id);
-    if (summary && this.document(id)) this.autosave.schedule(summary, this.document(id));
+    if (summary && this.document(id))
+      this.autosave.schedule(summary, this.document(id), this.images.pending(this.document(id)));
     this.notify();
   }
 

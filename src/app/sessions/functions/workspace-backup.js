@@ -1,3 +1,6 @@
+import { validateBackupImages } from './backup-images.js';
+import { validateDocumentOptions } from './validate-document-options.js';
+
 const toolIds = new Set(['sql-formatter', 'output-analyzer']);
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const time = (value) => Number.isFinite(value) && value >= 0;
@@ -10,7 +13,11 @@ export function readWorkspaceBackup(text) {
   } catch {
     throw new Error('The backup is not valid JSON.');
   }
-  if (!record(value) || value.format !== 'work-utilities-workspace' || value.schemaVersion !== 1)
+  if (
+    !record(value) ||
+    value.format !== 'work-utilities-workspace' ||
+    ![1, 2].includes(value.schemaVersion)
+  )
     throw new Error('This is not a supported Work Utilities Vanilla workspace backup.');
   const invalid = () => {
     throw new Error(
@@ -34,6 +41,8 @@ export function readWorkspaceBackup(text) {
       !toolIds.has(item.toolId) ||
       typeof item.name !== 'string' ||
       !item.name.trim() ||
+      (item.legacyFileBaseName !== undefined &&
+        (typeof item.legacyFileBaseName !== 'string' || !item.legacyFileBaseName.trim())) ||
       !time(item.createdAt) ||
       !time(item.updatedAt) ||
       (item.lastViewedAt !== undefined && !time(item.lastViewedAt)) ||
@@ -55,9 +64,17 @@ export function readWorkspaceBackup(text) {
       !record(item.options)
     )
       invalid();
+    if (
+      (item.fileBaseName !== undefined &&
+        (typeof item.fileBaseName !== 'string' || !item.fileBaseName.trim())) ||
+      (item.fileNameCustomized !== undefined && typeof item.fileNameCustomized !== 'boolean')
+    )
+      invalid();
     bodies.add(item.id);
+    validateDocumentOptions(item, invalid);
   }
   if (bodies.size !== ids.size) invalid();
+  validateBackupImages(value, invalid);
   const { order, activeId, counters } = value.workspace;
   const openIds = value.summaries.filter((item) => item.isOpen).map((item) => item.id);
   if (
@@ -83,16 +100,17 @@ export function readWorkspaceBackup(text) {
   return value;
 }
 
-export function createWorkspaceBackup(summaries, documents, workspace, appearance) {
+export function createWorkspaceBackup(summaries, documents, workspace, appearance, images = []) {
   return {
     format: 'work-utilities-workspace',
-    schemaVersion: 1,
+    schemaVersion: 2,
     exportedAt: new Date().toISOString(),
     summaries: summaries.map((summary) => ({
       ...summary,
       updatedAt: summary.updatedAt ?? summary.createdAt,
     })),
     documents,
+    images,
     workspace,
     appearance,
   };

@@ -3,12 +3,16 @@
 @import './app/workspace/components/sidebar.css';
 @import './app/workspace/components/workspace-home.css';
 @import './app/workspace/components/session-library.css';
+@import './app/workspace/components/debug-dialog.css';
 @import './app/shared/dialog.css';
+@import './app/shared/workspace-controls.css';
 @import './app/sql-formatter/components/sql-formatter.css';
+@import './app/sql-formatter/components/unit-test-panel.css';
 @import './app/output-analyzer/components/output-analyzer.css';
 @import './app/output-analyzer/components/cell-inspector.css';
 @import './app/output-analyzer/components/json-tree.css';
 @import './app/output-analyzer/components/analyzer-layout.css';
+@import './app/output-analyzer/components/table-search.css';
 
 [hidden] {
   display: none !important;

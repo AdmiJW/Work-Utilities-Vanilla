@@ -3,6 +3,7 @@ import { mkdir, readFile, writeFile, rename } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { resolve } from 'node:path';
 import { collectLicenses } from './collect-licenses.mjs';
+import { loadDebugExamples } from './load-debug-examples.mjs';
 
 const options = {
   bundle: true,
@@ -17,12 +18,18 @@ const options = {
 const scriptSafe = (value) => value.replace(/<\/script/gi, '<\\/script');
 
 export async function buildApplication() {
-  const application = await build({ ...options, entryPoints: ['src/main.js'], format: 'iife' });
+  const application = await build({
+    ...options,
+    entryPoints: ['src/main.js'],
+    format: 'iife',
+    define: { 'globalThis.__WORK_UTILITIES_EXAMPLES__': JSON.stringify(await loadDebugExamples()) },
+  });
   const css = await build({ ...options, entryPoints: ['src/styles.css'] });
   const workerEntries = {
     analyze: 'src/app/output-analyzer/workers/analyze.js',
     inspect: 'src/app/output-analyzer/workers/inspect.js',
     export: 'src/app/output-analyzer/workers/export.js',
+    'unit-test': 'src/app/sql-formatter/workers/export-unit-test.js',
   };
   const workers = {};
   const inputs = new Set(Object.keys(application.metafile.inputs));

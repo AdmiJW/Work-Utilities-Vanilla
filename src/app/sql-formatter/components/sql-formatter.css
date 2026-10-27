@@ -2,6 +2,8 @@
   background: var(--panel);
 }
 .sql-editor {
+  position: relative;
+  min-width: 0;
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -33,7 +35,7 @@
 }
 .sql-editor .cm-activeLine,
 .sql-editor .cm-activeLineGutter {
-  background: var(--panel-raised);
+  background: color-mix(in srgb, var(--accent) 9%, transparent);
 }
 .sql-editor .cm-focused {
   outline: none;
@@ -41,9 +43,26 @@
 .sql-editor .cm-cursor {
   border-left-color: var(--text);
 }
-.sql-editor .cm-selectionBackground,
-.sql-editor .cm-focused .cm-selectionBackground {
-  background: var(--accent-soft);
+.sql-editor .cm-editor .cm-selectionBackground,
+.sql-editor .cm-editor.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground {
+  background: color-mix(in srgb, var(--accent) 34%, transparent);
+}
+.sql-editor.has-selection .cm-activeLine {
+  background: transparent;
+}
+.sql-editor.file-drag-over::after {
+  content: 'Drop a SQL file to import';
+  position: absolute;
+  inset: 4px;
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  border: 2px dashed var(--accent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 88%, transparent);
+  color: var(--accent);
+  font-weight: 600;
+  pointer-events: none;
 }
 .sql-editor .cm-panels {
   color: var(--text);

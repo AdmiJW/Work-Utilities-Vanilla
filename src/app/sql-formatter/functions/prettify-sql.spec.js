@@ -13,7 +13,9 @@ describe('four-space SQL formatting', () => {
       const pretty = prettifySql(source);
       const compact = formatSqlAsOneLine(pretty);
       expect(compact).not.toContain('-- Sample');
-      expect(compact.split('\n').every((line) => line.endsWith(';'))).toBe(true);
+      expect(
+        compact.split('\n\n').every((line) => !line.includes('\n') && line.endsWith(';')),
+      ).toBe(true);
       if (name === 'complex-sales-analysis') {
         expect(compact).toContain("'High; value'");
         expect(compact.split('\n')).toHaveLength(1);

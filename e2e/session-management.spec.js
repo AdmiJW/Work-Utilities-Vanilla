@@ -18,7 +18,9 @@ test('horizontal tab dragging persists order and context menus archive the corre
   }
   await enterSql(page, "SELECT 'save before close';");
   await expect(page.locator('.breadcrumb')).toContainText('Fourth');
-  await expect(page.getByRole('heading', { name: 'Fourth', exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Export filename', exact: true })).toHaveValue(
+    'SQL Formatter 04',
+  );
   await expect(
     page.getByRole('button', { name: 'New session of current tool', exact: true }),
   ).toHaveCount(0);

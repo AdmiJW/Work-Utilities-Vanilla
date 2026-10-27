@@ -89,6 +89,8 @@ Rules to preserve:
 
 ## 6. Files provided
 
+The application also accepts ordinary SELECT lists and wildcards inside the same statement-block/pipe-delimited protocol. Ordinary lists recover aliases or expression names. Wildcards and unrecoverable projections use generic headers inferred from the widest row; shorter rows display missing trailing fields as empty and retain their original text in Diagnostics. This is an application fallback, not a claim that SQL Server normally emits pipe delimiters for `SELECT *`. Known column-count mismatches remain diagnostics. Zero-row wildcard results do not imply a known schema.
+
 - `examples/der-dpr-output analyzer/example_01_basic_results.txt`: four statements demonstrating **multiple rows, missing fields, zero rows, and one row**.
 - `examples/der-dpr-output analyzer/example_02_json_events.txt`: three statements demonstrating **two JSON-bearing rows (with stringified nested JSON), one row, and zero rows**.
 - `examples/der-dpr-output analyzer/example_03_patch_request_results.txt`: repeated before/patch/after sequences for customer, order, refund, and note data.

@@ -11,7 +11,7 @@ export function attachTabDrag(host, shell, id, state, commit) {
     if (current.preview && !cancelled) commit(current.order);
   };
   shell.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0 || event.target.closest('.tab-close') || state.busy) return;
+    if (event.button !== 0 || event.target.closest('.tab-close, input') || state.busy) return;
     drag = {
       x: event.clientX,
       bounds: shell.getBoundingClientRect(),

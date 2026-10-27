@@ -45,12 +45,13 @@ describe('output parsing', () => {
     const result = parseOutputFile(
       "SQL Statement Run: --001SELECT CONCAT_WS('|', a,b) FROM T\na\na|b\nSQL Statement Run: --001UPDATE T SET x=1;\n2 rows affected\nmessage\nSQL Statement Run: --001SELECT * FROM T\nraw record",
     );
-    expect(result.parsedRows).toBe(1);
+    expect(result.parsedRows).toBe(2);
     expect(result.statements[1].reportedRows).toBe(2);
     expect(result.statements[1].messages).toEqual(['message']);
     expect(result.statements[0].marker).toBe('001');
     expect(result.diagnostics.some((item) => item.raw === 'a')).toBe(true);
-    expect(result.diagnostics.some((item) => item.raw === 'raw record')).toBe(true);
+    expect(result.statements[2].columns.map((column) => column.name)).toEqual(['Column 1']);
+    expect(result.statements[2].rows[0].values).toEqual(['raw record']);
   });
   it('preserves leading/trailing whitespace, empty values, large numbers and scalar JSON', () => {
     expect(splitResultRow(' 001 |9007199254740993123||{"x":"a|b"}|"c|d"|')).toEqual([

@@ -57,9 +57,12 @@ test('downloaded application contains no session data and both tools work offlin
     expect(workbook.worksheets[0].getCell('B8').value).toBe(raw);
     await local.getByRole('button', { name: 'Browser compatibility', exact: true }).click();
     const compatibility = local.getByRole('dialog', { name: 'Browser compatibility', exact: true });
-    await compatibility.getByText('Third-party licenses', { exact: true }).click();
-    await expect(compatibility.locator('.license-text')).toContainText('ag-grid-community');
-    await expect(compatibility.locator('.license-text')).toContainText('@codemirror');
+    await expect(compatibility.locator('.status-chip')).toHaveCount(2);
+    await expect(compatibility).not.toContainText('Third-party licenses');
+    expect(await local.locator('#third-party-licenses').textContent()).toContain(
+      'ag-grid-community',
+    );
+    expect(await local.locator('#third-party-licenses').textContent()).toContain('@codemirror');
     expect(requests).toEqual([]);
   } finally {
     await context.close();
@@ -168,7 +171,7 @@ test('blocked workers use foreground processing and blocked clipboard opens sele
   await page.getByRole('button', { name: 'Browser compatibility', exact: true }).click();
   await expect(
     page.getByRole('dialog', { name: 'Browser compatibility', exact: true }),
-  ).toContainText('temporarily slow');
+  ).toContainText('foreground');
 });
 
 test('storage denial keeps the application usable and permits backup recovery after reloading', async ({

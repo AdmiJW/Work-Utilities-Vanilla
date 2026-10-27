@@ -52,6 +52,9 @@ describe('workspace backup interchange', () => {
         value.schemaVersion = 99;
       },
       (value) => {
+        value.summaries[0].legacyFileBaseName = 42;
+      },
+      (value) => {
         value.summaries.push(value.summaries[0]);
       },
       (value) => {

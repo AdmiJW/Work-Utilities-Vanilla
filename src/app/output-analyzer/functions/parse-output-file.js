@@ -1,5 +1,5 @@
 import { getSqlStatementKind } from '../../sql-language/public-api.js';
-import { readDelimitedProjection } from './read-delimited-projection.js';
+import { readResultProjection } from './read-result-projection.js';
 import { splitResultRow } from './split-result-row.js';
 function parseOutputFile(source, reportProgress) {
   const result = { statements: [], diagnostics: [], parsedRows: 0 };
@@ -23,7 +23,7 @@ function parseOutputFile(source, reportProgress) {
         marker: header[1] ?? '',
         sql,
         kind,
-        tableName: 'Query',
+        tableName: null,
         columns: [],
         rows: [],
         observedRows: 0,
@@ -33,8 +33,9 @@ function parseOutputFile(source, reportProgress) {
       result.statements.push(current);
       if (kind === 'SELECT') {
         try {
-          Object.assign(current, readDelimitedProjection(sql));
+          Object.assign(current, readResultProjection(sql));
         } catch (error) {
+          current.generic = true;
           result.diagnostics.push({
             statementIndex: current.index,
             lineNumber,
@@ -65,16 +66,16 @@ function parseOutputFile(source, reportProgress) {
       continue;
     }
     current.observedRows++;
-    if (current.columns.length === 0) {
-      result.diagnostics.push({
-        statementIndex: current.index,
-        lineNumber,
-        raw: line,
-        message: 'Row retained as raw text because its SELECT projection is unsupported.',
-      });
+    const values = splitResultRow(line);
+    if (current.generic) {
+      while (current.columns.length < values.length) {
+        const name = `Column ${current.columns.length + 1}`;
+        current.columns.push({ name, expression: name });
+      }
+      current.rows.push({ lineNumber, values, raw: line });
+      result.parsedRows++;
       continue;
     }
-    const values = splitResultRow(line);
     if (values.length !== current.columns.length) {
       result.diagnostics.push({
         statementIndex: current.index,
@@ -88,6 +89,27 @@ function parseOutputFile(source, reportProgress) {
     result.parsedRows++;
   }
   for (const statement of result.statements) {
+    if (statement.generic) {
+      result.diagnostics.push({
+        statementIndex: statement.index,
+        lineNumber: 0,
+        raw: statement.sql,
+        message: statement.columns.length
+          ? 'Column names could not be recovered. Generic headers were inferred from the widest data row.'
+          : 'No data rows were returned, so column names and count could not be inferred.',
+      });
+      for (const row of statement.rows) {
+        if (row.values.length !== statement.columns.length)
+          result.diagnostics.push({
+            statementIndex: statement.index,
+            lineNumber: row.lineNumber,
+            raw: row.raw,
+            message: `Inferred ${statement.columns.length} columns but this row has ${row.values.length} fields. Absent trailing fields are displayed as empty.`,
+          });
+        while (row.values.length < statement.columns.length) row.values.push('');
+        delete row.raw;
+      }
+    }
     if (
       statement.kind === 'SELECT' &&
       statement.reportedRows !== null &&

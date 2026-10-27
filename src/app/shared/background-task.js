@@ -1,6 +1,6 @@
 import { createStore } from './dom.js';
 
-export const backgroundStatus = createStore({ mode: 'workers', message: '' });
+export const backgroundStatus = createStore({ mode: 'unverified', message: '' });
 
 /** One current request per tool task; stale completions cannot overwrite newer input. */
 export class BackgroundTask {
@@ -68,6 +68,7 @@ export class BackgroundTask {
         worker.onmessage = ({ data }) => {
           if (sequence !== this.sequence) return;
           if (data.type === 'ready') {
+            backgroundStatus.update({ mode: 'workers', message: '' });
             clearTimeout(current.startupTimer);
             worker.postMessage(payload);
           } else if (data.type === 'progress') progress(data.value);

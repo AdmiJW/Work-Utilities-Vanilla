@@ -27,8 +27,8 @@ test('JSON sheets, nested inspection, sorting/filtering, full workbook export an
     'utf8',
   );
   await openAnalyzer(page, source);
-  await expect(page.getByRole('tab', { name: /1\. WebhookEvent/ })).toBeVisible();
-  await expect(page.getByRole('tab', { name: /3\. FailedWebhook/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^WebhookEvent/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^FailedWebhook/ })).toBeVisible();
   const headerCell = page.locator('.ag-cell[col-id="3"]').filter({ hasText: 'trace-7d91' });
   await headerCell.dblclick();
   await expect(page.getByRole('textbox', { name: 'Raw cell value', exact: true })).toHaveValue(
@@ -80,9 +80,9 @@ test('JSON sheets, nested inspection, sorting/filtering, full workbook export an
   await workbook.xlsx.readFile(output);
   expect(workbook.creator).toBe('Work Utilities');
   expect(workbook.worksheets.map((sheet) => sheet.name)).toEqual([
-    '01 WebhookEvent',
-    '02 DeliveryAttempt',
-    '03 FailedWebhook',
+    'WebhookEvent',
+    'DeliveryAttempt',
+    'FailedWebhook',
   ]);
   expect(workbook.worksheets[0].getCell('A8').value).toBe('MSG-9001');
   expect(workbook.worksheets[0].getCell('A9').value).toBe('MSG-9002');
@@ -114,7 +114,7 @@ test('diagnostics, DPR summaries and oversized-cell export blocking', async ({ p
   await expect(page.getByRole('button', { name: 'Export Excel', exact: true })).toBeEnabled();
   await page.getByRole('button', { name: 'Export Excel', exact: true }).click();
   await expect(page.getByRole('alert')).toContainText('Excel export blocked');
-  await expect(page.getByRole('alert')).toContainText('01 Demo, row 8, column 2');
+  await expect(page.getByRole('alert')).toContainText('Demo, row 8, column 2');
   await expect(page.getByText(/32,768 characters exceeds/)).toBeVisible();
 });
 test('analyzer sessions keep independent sheets and restore the active result', async ({
@@ -124,8 +124,8 @@ test('analyzer sessions keep independent sheets and restore the active result', 
     page,
     await readFile('examples/der-dpr-output analyzer/example_01_basic_results.txt', 'utf8'),
   );
-  await page.getByRole('tab', { name: /3\. RefundRequest/ }).click();
-  await expect(page.getByRole('tab', { name: /3\. RefundRequest/ })).toHaveAttribute(
+  await page.getByRole('tab', { name: /^RefundRequest/ }).click();
+  await expect(page.getByRole('tab', { name: /^RefundRequest/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );
@@ -136,13 +136,13 @@ test('analyzer sessions keep independent sheets and restore the active result', 
     .getByRole('textbox', { name: 'Execution output', exact: true })
     .fill("SQL Statement Run: --2SELECT CONCAT_WS('|', Id, State) FROM SecondTable\n0002|ACTIVE");
   await page.getByRole('button', { name: 'Analyze output', exact: true }).click();
-  await expect(page.getByRole('tab', { name: /1\. SecondTable/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^SecondTable/ })).toBeVisible();
   await page.getByRole('tab', { name: 'Output Analyzer 01', exact: true }).click();
-  await expect(page.getByRole('tab', { name: /3\. RefundRequest/ })).toHaveAttribute(
+  await expect(page.getByRole('tab', { name: /^RefundRequest/ })).toHaveAttribute(
     'aria-selected',
     'true',
   );
-  await expect(page.getByRole('tab', { name: /1\. Customer/ })).toBeVisible();
+  await expect(page.getByRole('tab', { name: /^Customer/ })).toBeVisible();
   await page.getByRole('tab', { name: 'Output Analyzer 02', exact: true }).click();
   await expect(page.getByRole('gridcell', { name: '0002', exact: true })).toBeVisible();
   await expect(page.getByText('All changes saved', { exact: true })).toBeVisible();

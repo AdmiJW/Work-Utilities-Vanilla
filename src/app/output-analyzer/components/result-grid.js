@@ -1,9 +1,21 @@
 import { createGrid, ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
+import { matchesTableSearch } from '../functions/matches-table-search.js';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
-export function createResultGrid(host, statement, dark, savedView, selected, inspect, changed) {
+export function createResultGrid(
+  host,
+  statement,
+  dark,
+  savedView,
+  selected,
+  inspect,
+  changed,
+  search = '',
+  countChanged = () => {},
+) {
   let restoring = true;
+  let query = search;
   const theme = (isDark) =>
     themeQuartz.withParams({
       backgroundColor: isDark ? '#101b2e' : '#ffffff',
@@ -69,6 +81,9 @@ export function createResultGrid(host, statement, dark, savedView, selected, ins
     theme: theme(dark),
     getRowId: ({ data }) => String(data.lineNumber),
     animateRows: false,
+    isExternalFilterPresent: () => !!query,
+    doesExternalFilterPass: (node) => matchesTableSearch(node.data.values, query),
+    onModelUpdated: (event) => countChanged(event.api.getDisplayedRowCount()),
     onCellClicked: (event) => select(event.data, event.column.getColId()),
     onCellFocused: (event) =>
       select(api.getDisplayedRowAtIndex(event.rowIndex)?.data, event.column?.getColId()),
@@ -95,6 +110,10 @@ export function createResultGrid(host, statement, dark, savedView, selected, ins
   restoring = false;
   return {
     api,
+    setSearch(value) {
+      query = value;
+      api.onFilterChanged();
+    },
     setTheme(value) {
       api.setGridOption('theme', theme(value));
     },

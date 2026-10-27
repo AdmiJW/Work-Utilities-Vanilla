@@ -1,4 +1,4 @@
-import { applyEdits, format, parseTree, printParseErrorCode } from 'jsonc-parser';
+import { applyEdits, format, parseTree } from 'jsonc-parser';
 import { unwrapSerializedJson } from './decode-serialized-json.js';
 function mapNode(node, label) {
   const children =
@@ -30,8 +30,8 @@ function inspectJson(source) {
         root: null,
         pretty: '',
         error: first
-          ? `${printParseErrorCode(first.error)} at character ${first.offset + 1}`
-          : 'Not a JSON value',
+          ? `This value may not be valid JSON (near character ${first.offset + 1}). You can still view and copy the raw value.`
+          : 'This value may not be valid JSON. You can still view and copy the raw value.',
       };
     }
     return {

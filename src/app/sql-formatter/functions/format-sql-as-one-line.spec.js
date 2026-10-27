@@ -5,7 +5,7 @@ describe('formatSqlAsOneLine', () => {
     const source =
       "-- request\nSELECT N'it''s; -- a value', [a;]]b] /* outer /* nested */ comment */ FROM T;\nUPDATE T\nSET x = '/*keep*/'";
     expect(formatSqlAsOneLine(source)).toBe(
-      "SELECT N'it''s; -- a value', [a;]]b] FROM T;\nUPDATE T SET x = '/*keep*/';",
+      "SELECT N'it''s; -- a value', [a;]]b] FROM T;\n\nUPDATE T SET x = '/*keep*/';",
     );
   });
   it('supports CASE, CTEs, and nested SELECT expressions', () => {

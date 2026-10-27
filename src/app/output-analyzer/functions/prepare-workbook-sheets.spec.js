@@ -33,7 +33,7 @@ ${values.join('|')}`,
       "SQL Statement Run: --1SELECT CONCAT_WS('|',a,b) FROM T\nwrong\nSQL Statement Run: --1UPDATE T SET x=1;\n2 rows affected",
     );
     const sheets = prepareWorkbookSheets(result);
-    expect(sheets.map((sheet) => sheet.name)).toEqual(['01 T', '_Statements', '_Diagnostics']);
+    expect(sheets.map((sheet) => sheet.name)).toEqual(['T', '_Statements', '_Diagnostics']);
     expect(sheets[2].rows[1][3]).toBe('wrong');
     expect(sheets[1].rows[1][4]).toBe('2');
   });
@@ -45,7 +45,7 @@ ${values.join('|')}`,
     );
     const issues = validateWorkbookSheets(prepareWorkbookSheets(result));
     expect(issues).toHaveLength(1);
-    expect(issues[0]).toMatchObject({ sheet: '01 T', row: 8, column: 2 });
+    expect(issues[0]).toMatchObject({ sheet: 'T', row: 8, column: 2 });
     expect(result.statements[0].rows[0].values[1]).toBe(oversized);
   });
 });

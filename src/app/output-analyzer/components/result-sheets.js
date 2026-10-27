@@ -3,6 +3,9 @@ import { icon } from '../../shared/icons.js';
 import { copyText } from '../../file-transfer/public-api.js';
 import { createResultGrid } from './result-grid.js';
 import { renderStatementTable, renderDiagnostics } from './statement-tables.js';
+import { startInlineRename } from '../../shared/inline-rename.js';
+import { resultSheetNames, statementKeys } from '../functions/result-sheet-names.js';
+import { createTableSearch } from './table-search.js';
 
 export function createResultSheets(state, id, callbacks) {
   const doc = () => state.document(id);
@@ -11,6 +14,8 @@ export function createResultSheets(state, id, callbacks) {
   let revision = -1;
   let renderedSheet = null;
   let grid = null;
+  let searchView = null;
+  let tabsSignature = '';
   let dark = state.appearance.theme === 'dark';
   const tabs = element('div', {
     className: 'sheet-tabs',
@@ -30,11 +35,12 @@ export function createResultSheets(state, id, callbacks) {
     ),
   );
   function sheets() {
+    const names = resultSheetNames(result.statements, doc().options.sheetNames);
     const list = result.statements
       .filter((item) => item.kind === 'SELECT')
       .map((item) => ({
         id: String(item.index),
-        name: `${item.index}. ${item.tableName}`,
+        name: names.get(item.index),
         count: item.rows.length,
         statement: item,
       }));
@@ -48,33 +54,67 @@ export function createResultSheets(state, id, callbacks) {
     const list = sheets();
     if (!list.some((sheet) => sheet.id === selectedSheet)) selectedSheet = list[0]?.id ?? '';
     tabs.hidden = false;
-    clear(
-      tabs,
-      list.map((sheet) =>
-        button(
-          [
-            sheet.name,
-            sheet.count === undefined
-              ? ''
-              : element('span', { className: 'sheet-count' }, String(sheet.count)),
-          ],
-          () => {
-            selectedSheet = sheet.id;
-            state.updateOptions(id, { selectedSheet });
-            render();
-          },
-          {
-            role: 'tab',
-            'aria-selected': sheet.id === selectedSheet,
-            className: sheet.id === selectedSheet ? 'active' : '',
-          },
-        ),
-      ),
-    );
+    const nextTabs = JSON.stringify(list.map(({ id, name, count }) => [id, name, count]));
+    if (tabsSignature !== nextTabs)
+      clear(
+        tabs,
+        list.map((sheet) => {
+          const tab = button(
+            [
+              sheet.name,
+              sheet.count === undefined
+                ? ''
+                : element('span', { className: 'sheet-count' }, String(sheet.count)),
+            ],
+            () => {
+              selectedSheet = sheet.id;
+              state.updateOptions(id, { selectedSheet });
+              render();
+            },
+            {
+              role: 'tab',
+              'aria-selected': sheet.id === selectedSheet,
+              className: sheet.id === selectedSheet ? 'active' : '',
+              dataset: { sheetId: sheet.id },
+            },
+          );
+          if (sheet.statement) {
+            const rename = () =>
+              startInlineRename(
+                tab,
+                sheet.name,
+                (name) => {
+                  const key = statementKeys(result.statements).get(sheet.statement.index);
+                  state.updateOptions(id, {
+                    sheetNames: { ...doc().options.sheetNames, [key]: name },
+                  });
+                  render();
+                },
+                { label: 'Result sheet name' },
+              );
+            tab.addEventListener('dblclick', rename);
+            tab.addEventListener('keydown', (event) => {
+              if (event.key === 'F2') {
+                event.preventDefault();
+                rename();
+              }
+            });
+          }
+          return tab;
+        }),
+      );
+    tabsSignature = nextTabs;
+    for (const tab of tabs.querySelectorAll('[data-sheet-id]')) {
+      const active = tab.dataset.sheetId === selectedSheet;
+      tab.setAttribute('aria-selected', String(active));
+      tab.classList.toggle('active', active);
+    }
     const key = `${revision}:${selectedSheet}`;
     if (renderedSheet === key) return;
     renderedSheet = key;
     grid?.dispose();
+    searchView?.dispose();
+    searchView = null;
     grid = null;
     callbacks.changed();
     const selected = list.find((sheet) => sheet.id === selectedSheet);
@@ -118,7 +158,19 @@ export function createResultSheets(state, id, callbacks) {
       element('pre', { className: 'sql-text mono' }, statement.sql),
     );
     const host = element('div', { className: 'grid-area' });
-    clear(main, header, host);
+    const searchKey = statementKeys(result.statements).get(statement.index);
+    searchView = createTableSearch(
+      doc().options.tableSearches?.[searchKey] ?? '',
+      statement.rows.length,
+      (query) => grid?.setSearch(query),
+      (query) => {
+        state.updateOptions(id, {
+          tableSearches: { ...doc().options.tableSearches, [searchKey]: query },
+        });
+      },
+    );
+    searchView.count(statement.rows.length);
+    clear(main, header, searchView.element, host);
     if (statement.columns.length)
       grid = createResultGrid(
         host,
@@ -131,13 +183,15 @@ export function createResultSheets(state, id, callbacks) {
           state.updateOptions(id, {
             gridViews: { ...doc().options.gridViews, [selectedSheet]: view },
           }),
+        doc().options.tableSearches?.[searchKey] ?? '',
+        (count) => searchView?.count(count),
       );
     else
       host.append(
         element(
           'p',
           { className: 'no-projection' },
-          'Unsupported projection. Original rows are available in Diagnostics.',
+          'No data rows were returned, so column names and count could not be inferred.',
         ),
       );
   }
@@ -156,6 +210,7 @@ export function createResultSheets(state, id, callbacks) {
     },
     dispose() {
       grid?.dispose();
+      searchView?.dispose();
     },
   };
 }

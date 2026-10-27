@@ -1,5 +1,6 @@
 import { element, button, clear, message } from '../../shared/dom.js';
 import { icon } from '../../shared/icons.js';
+import { createExportFilename } from '../../sessions/public-api.js';
 import { BackgroundTask } from '../../shared/background-task.js';
 import { downloadFile, sanitizeFileName } from '../../file-transfer/public-api.js';
 import { analyzeOutput } from '../functions/analyze-output.js';
@@ -23,10 +24,22 @@ export function createOutputAnalyzer(state, id) {
   const exporter = new BackgroundTask('export', exportWorkbook);
   const doc = () => state.document(id);
   const remember = (options) => state.updateOptions(id, options);
-  const heading = element('h1');
-  const notice = element('div', { className: 'notice error', role: 'alert', hidden: true });
+  const filename = createExportFilename(state, id, '.xlsx');
+  const noticeContent = element('div', { className: 'notice-content' });
+  const notice = element(
+    'div',
+    { className: 'notice error analyzer-notice', role: 'alert', hidden: true },
+    noticeContent,
+    button(
+      '×',
+      () => {
+        notice.hidden = true;
+      },
+      { className: 'icon-button', 'aria-label': 'Dismiss analyzer notice' },
+    ),
+  );
   const showError = (error) => {
-    notice.textContent = message(error);
+    noticeContent.textContent = message(error);
     notice.hidden = false;
   };
   const sourceView = createSourceInput(state, id, showError, () => {
@@ -123,12 +136,16 @@ export function createOutputAnalyzer(state, id) {
     exporting = true;
     notice.hidden = true;
     update();
+    const fileName = state.fileName(id);
     try {
-      const output = await exporter.run({ result });
+      const output = await exporter.run({
+        result,
+        customNames: structuredClone(doc().options.sheetNames ?? {}),
+      });
       if (!alive) return;
       if (output.issues.length) {
         clear(
-          notice,
+          noticeContent,
           element('strong', {}, 'Excel export blocked'),
           element(
             'ul',
@@ -148,7 +165,7 @@ export function createOutputAnalyzer(state, id) {
       } else
         downloadFile(
           output.buffer,
-          sanitizeFileName(state.summaries.find((item) => item.id === id).name, '.xlsx'),
+          sanitizeFileName(fileName, '.xlsx'),
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
         );
     } catch (error) {
@@ -171,7 +188,7 @@ export function createOutputAnalyzer(state, id) {
         'div',
         { className: 'tool-heading' },
         element('span', { className: 'tool-emblem' }, icon('table', 18)),
-        heading,
+        filename.element,
       ),
       element('div', { className: 'toolbar-actions' }, analyzeButton, exportButton),
     ),
@@ -183,7 +200,7 @@ export function createOutputAnalyzer(state, id) {
   );
   function update() {
     if (!alive || !doc()) return;
-    heading.textContent = state.summaries.find((item) => item.id === id)?.name ?? '';
+    filename.update();
     sourceView.update();
     analyzeButton.disabled = running || !doc().source;
     analyzeButton.textContent = running ? 'Analyzing…' : 'Analyze output';
