@@ -6,13 +6,24 @@ This is an independent repository alongside **Work-Utilities-Angular**. It start
 
 ## Open the application
 
-1. Obtain `dist/work-utilities.html`, or use **Download offline app** on the hosted application.
+1. Obtain the repository's [index.html](index.html), `dist/work-utilities.html`, or use **Download offline app** on the hosted application.
 2. Save the HTML somewhere you can keep it, then open it in desktop **Chrome or Edge**.
 3. Use either tool, including file imports and exports, without internet access. No installation, local server, extension, PWA, or DevTools is required.
 
 The download action produces an empty application file. It does not embed the currently displayed SQL, results, or workspace. Saved sessions are handled separately by browser storage and workspace backups.
 
 Native **Save Page As** may also be used with an HTML save format. **HTML only** is suitable because all application resources are inline. Saving a live page as **Webpage, complete** can also capture currently rendered content; prefer **Download offline app** for a clean application copy. A saved copy clears its serialized interface before opening the workspace. The automated portable-file tests exercise downloading and reopening the complete HTML; a native Save As check on the managed corporate browsers is part of the manual acceptance checklist below.
+
+### Copy the application from GitHub
+
+The complete built application is committed as [index.html on GitHub](https://github.com/AdmiJW/Work-Utilities-Vanilla/blob/master/index.html). To create a local copy:
+
+1. Open that file and select **Raw**, or open the [raw HTML directly](https://raw.githubusercontent.com/AdmiJW/Work-Utilities-Vanilla/master/index.html).
+2. Select all and copy the entire raw text into a plain-text editor.
+3. Save it as `index.html` using UTF-8 encoding and **All files** as the file type, so the editor does not add `.txt`.
+4. Open the saved file in Chrome or Edge. The libraries and workers are already embedded.
+
+Use the raw contents when copying: GitHub may omit the normal preview for large files, and [its Raw view provides the complete file](https://docs.github.com/en/repositories/working-with-files/using-files/viewing-and-understanding-files#viewing-or-copying-the-raw-file-content). Raw contents are served from `raw.githubusercontent.com`, which must be accessible in the browser.
 
 ## Use the tools
 
@@ -104,14 +115,14 @@ npm ci
 npm start
 ```
 
-The development preview rebuilds the self-contained file when source changes. For a release:
+The development preview rebuilds both self-contained HTML copies when source changes. For a release:
 
 ```sh
 npm run check
 npm run preview
 ```
 
-Open [127.0.0.1:4273](http://127.0.0.1:4273), or open `dist/work-utilities.html` directly. `npm run build` generates that single file. Packages are locked through npm and embedded during the build; end users do not download dependencies separately. Current output is approximately 5.1 MB before HTTP compression.
+Open [127.0.0.1:4273](http://127.0.0.1:4273), or open `dist/work-utilities.html` or `index.html` directly. `npm run build` generates both files with identical contents. The root `index.html` is tracked for GitHub access; `dist/` remains ignored. Always rebuild after application changes and commit the regenerated `index.html` with the source changes before pushing to GitHub. Do not edit the generated HTML directly. Packages are locked through npm and embedded during the build; end users do not download dependencies separately. Current output is approximately 5 MB before HTTP compression.
 
 The source uses JavaScript modules for maintainability. esbuild emits classic inline JavaScript with code splitting disabled. Worker bundles are embedded as data and instantiated through Blob URLs. CSS, SVG icons, and license notices are embedded too. The artifact's content security policy disallows application network connections. No runtime dependency on the Angular repository exists.
 

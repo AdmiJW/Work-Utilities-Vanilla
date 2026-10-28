@@ -50,10 +50,12 @@ export async function buildApplication() {
   if (/\/\*__(?:STYLES|LICENSES|WORKERS|APPLICATION)__\*\//.test(html))
     throw new Error('An artifact placeholder was not replaced.');
   await mkdir('dist', { recursive: true });
-  await writeFile('dist/work-utilities.html.tmp', html);
-  await rename('dist/work-utilities.html.tmp', 'dist/work-utilities.html');
+  for (const output of ['dist/work-utilities.html', 'index.html']) {
+    await writeFile(`${output}.tmp`, html);
+    await rename(`${output}.tmp`, output);
+  }
   console.log(
-    `Built dist/work-utilities.html (${(Buffer.byteLength(html) / 1024 / 1024).toFixed(2)} MB). All runtime resources are embedded.`,
+    `Built dist/work-utilities.html and index.html (${(Buffer.byteLength(html) / 1024 / 1024).toFixed(2)} MB each). All runtime resources are embedded.`,
   );
 }
 
