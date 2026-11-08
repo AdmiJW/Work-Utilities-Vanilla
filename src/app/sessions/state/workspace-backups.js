@@ -66,7 +66,7 @@ export class WorkspaceBackups {
       );
       state.summaries = structuredClone(validated.summaries);
       state.order = [...validated.workspace.order];
-      state.counters = { ...validated.workspace.counters };
+      state.counters = { 'markdown-editor': 0, ...validated.workspace.counters };
       state.appearance = structuredClone(validated.appearance);
       state.activeId = null;
       state.generation++;

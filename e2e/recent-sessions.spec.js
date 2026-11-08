@@ -126,6 +126,7 @@ test('recent sessions reopen offline with analyzer state restored', async ({
     'true',
   );
   await page.getByRole('button', { name: 'Close Offline results', exact: true }).click();
+  await expect(page.getByRole('tab', { name: 'Offline results', exact: true })).toHaveCount(0);
   await page.reload();
   await expect(
     page.getByRole('button', { name: 'Reopen Offline results', exact: true }),

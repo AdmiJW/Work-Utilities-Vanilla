@@ -73,6 +73,27 @@ body,
   display: flex;
   flex-direction: column;
 }
+.manual-save-feedback {
+  position: absolute;
+  right: 18px;
+  top: 54px;
+  max-width: calc(100vw - 36px);
+  padding: 7px 12px;
+  z-index: 60;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 12px;
+  box-shadow: var(--app-shadow);
+  pointer-events: none;
+}
+.manual-save-feedback.failed {
+  color: var(--json-literal);
+}
+input[aria-invalid='true'] {
+  outline: 2px solid var(--json-literal);
+}
 .workspace-footer {
   display: flex;
   align-items: center;

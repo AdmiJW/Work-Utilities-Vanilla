@@ -1,11 +1,25 @@
 import { element, button } from './dom.js';
+import { animateEnter, animateExit, cancelMotion } from './motion.js';
+
+const closing = new WeakMap();
+export function closeDialog(dialog) {
+  if (closing.has(dialog)) return closing.get(dialog);
+  if (!dialog.open) return Promise.resolve();
+  dialog.classList.add('is-closing');
+  dialog.inert = true;
+  const task = animateExit(dialog, { kind: 'dialog' }).then(() => {
+    if (dialog.open) dialog.close();
+  });
+  closing.set(dialog, task);
+  return task;
+}
 
 /** Native dialogs provide focus containment, Escape, and keyboard activation. */
 export function openDialog(title, content, actions = []) {
   const previousFocus = document.activeElement;
   const headingId = `dialog-${crypto.randomUUID()}`;
   const dialog = element('dialog', { className: 'app-dialog', 'aria-labelledby': headingId });
-  const close = () => dialog.close();
+  const close = () => closeDialog(dialog);
   dialog.append(
     element(
       'header',
@@ -28,13 +42,24 @@ export function openDialog(title, content, actions = []) {
   dialog.addEventListener(
     'close',
     () => {
+      cancelMotion(dialog);
       dialog.remove();
-      previousFocus?.focus?.();
+      const fallback =
+        [...document.querySelectorAll('dialog[open]:not(.is-closing)')]
+          .at(-1)
+          ?.querySelector('button:not(:disabled)') ??
+        document.querySelector('[role="tab"][aria-selected="true"]');
+      (previousFocus?.isConnected ? previousFocus : fallback)?.focus?.({ preventScroll: true });
     },
     { once: true },
   );
   document.querySelector('#dialogs').append(dialog);
   dialog.showModal();
+  dialog.addEventListener('cancel', (event) => {
+    event.preventDefault();
+    void closeDialog(dialog);
+  });
+  void animateEnter(dialog, { kind: 'dialog' });
   return dialog;
 }
 
@@ -71,7 +96,7 @@ export function renameDialog(name) {
       { label: 'Rename', primary: true, action: apply },
     ]);
     input.addEventListener('keydown', (event) => {
-      if (event.key === 'Enter') apply(() => dialog.close());
+      if (event.key === 'Enter') apply(() => closeDialog(dialog));
     });
     dialog.addEventListener('close', () => resolve(result), { once: true });
     input.select();

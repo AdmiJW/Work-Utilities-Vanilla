@@ -29,6 +29,12 @@ export function createWorkspaceSidebar(state, openLibrary) {
     'From logs to clarity',
     'table',
   );
+  const markdownLink = toolLink(
+    'markdown-editor',
+    'Markdown Editor',
+    'Write & preview inline',
+    'markdown',
+  );
   const savedCount = element('span', { className: 'saved-count' });
   const collapse = button(
     icon('collapse'),
@@ -49,7 +55,7 @@ export function createWorkspaceSidebar(state, openLibrary) {
       ),
     ),
     element('div', { className: 'nav-section-label eyebrow' }, 'Tools'),
-    element('nav', { 'aria-label': 'Tools' }, sqlLink, analyzerLink),
+    element('nav', { 'aria-label': 'Tools' }, sqlLink, analyzerLink, markdownLink),
     element(
       'div',
       { className: 'sidebar-bottom' },
@@ -76,6 +82,7 @@ export function createWorkspaceSidebar(state, openLibrary) {
       savedCount.textContent = String(state.summaries.length);
       sqlLink.classList.toggle('active', state.activeSession?.toolId === 'sql-formatter');
       analyzerLink.classList.toggle('active', state.activeSession?.toolId === 'output-analyzer');
+      markdownLink.classList.toggle('active', state.activeSession?.toolId === 'markdown-editor');
     },
   };
 }

@@ -4,6 +4,7 @@ export async function loadDebugExamples() {
   const groups = [
     ['sql-formatter', 'examples/sql-formatter', '.sql'],
     ['output-analyzer', 'examples/der-dpr-output analyzer', '.txt'],
+    ['markdown-editor', 'examples/markdown-editor', '.md'],
   ];
   const examples = [];
   for (const [toolId, folder, extension] of groups) {

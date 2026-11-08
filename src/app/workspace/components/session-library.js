@@ -1,5 +1,6 @@
 import { element, button, clear, subscribeTo } from '../../shared/dom.js';
-import { openDialog, confirmAction } from '../../shared/dialog.js';
+import { openDialog, confirmAction, closeDialog } from '../../shared/dialog.js';
+import { tools } from '../../shared/tool-details.js';
 
 export function openSessionLibrary(state) {
   const selected = new Set();
@@ -98,11 +99,11 @@ export function openSessionLibrary(state) {
                   element(
                     'small',
                     {},
-                    `${session.toolId === 'sql-formatter' ? 'SQL Formatter' : 'Output Analyzer'} · ${new Date(session.updatedAt).toLocaleString()}`,
+                    `${tools[session.toolId].title} · ${new Date(session.updatedAt).toLocaleString()}`,
                   ),
                 ),
                 async () => {
-                  if (await state.activate(session.id)) dialog.close();
+                  if (await state.activate(session.id)) void closeDialog(dialog);
                 },
                 {
                   className: 'saved-open',

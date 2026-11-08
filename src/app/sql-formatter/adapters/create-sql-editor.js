@@ -10,7 +10,6 @@ import {
   history,
   historyKeymap,
   defaultKeymap,
-  indentWithTab,
   invertedEffects,
   isolateHistory,
 } from '@codemirror/commands';
@@ -25,6 +24,7 @@ import {
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { sql, MSSQL } from '@codemirror/lang-sql';
+import { applyIndentation } from '../../shared/indentation.js';
 
 const lineEndingEffect = StateEffect.define();
 const lineEnding = StateField.define({
@@ -73,7 +73,11 @@ export function createSqlEditor(host, source, options, changed, viewChanged) {
           ...searchKeymap,
           ...historyKeymap,
           ...foldKeymap,
-          indentWithTab,
+          {
+            key: 'Tab',
+            run: (view) => applyIndentation(view, false),
+            shift: (view) => applyIndentation(view, true),
+          },
         ]),
         EditorView.contentAttributes.of({ 'aria-label': 'SQL editor', spellcheck: 'false' }),
         wrapping.of(options.wordWrap ? EditorView.lineWrapping : []),

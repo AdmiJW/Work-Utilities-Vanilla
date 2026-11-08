@@ -13,6 +13,20 @@ const document = (source) => ({ id: 'one', schemaVersion: 1, source, revision: 0
 afterEach(() => vi.useRealTimers());
 
 describe('session autosave', () => {
+  it('retains immutable source and deep metadata snapshots when callers change documents', async () => {
+    const save = vi.fn().mockResolvedValue(undefined);
+    const autosave = new SessionAutosave({ save }, () => {});
+    const note = { ...document('original'), options: { selection: { anchor: 1, head: 2 } } };
+    autosave.schedule(summary, note);
+    note.source = 'changed';
+    note.options.selection.anchor = 9;
+    await autosave.flush();
+    expect(save.mock.calls[0][1]).toMatchObject({
+      source: 'original',
+      options: { selection: { anchor: 1, head: 2 } },
+    });
+    autosave.dispose();
+  });
   it('debounces for ten seconds and restarts after edits', async () => {
     vi.useFakeTimers();
     const save = vi.fn().mockResolvedValue(undefined);

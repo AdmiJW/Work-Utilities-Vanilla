@@ -6,6 +6,7 @@ import { renderStatementTable, renderDiagnostics } from './statement-tables.js';
 import { startInlineRename } from '../../shared/inline-rename.js';
 import { resultSheetNames, statementKeys } from '../functions/result-sheet-names.js';
 import { createTableSearch } from './table-search.js';
+import { animateEnter, cancelMotion } from '../../shared/motion.js';
 
 export function createResultSheets(state, id, callbacks) {
   const doc = () => state.document(id);
@@ -112,6 +113,7 @@ export function createResultSheets(state, id, callbacks) {
     const key = `${revision}:${selectedSheet}`;
     if (renderedSheet === key) return;
     renderedSheet = key;
+    void animateEnter(main, { kind: 'view' });
     grid?.dispose();
     searchView?.dispose();
     searchView = null;
@@ -209,6 +211,7 @@ export function createResultSheets(state, id, callbacks) {
       grid?.setTheme(value);
     },
     dispose() {
+      cancelMotion(main);
       grid?.dispose();
       searchView?.dispose();
     },

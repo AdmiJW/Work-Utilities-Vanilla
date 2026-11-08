@@ -15,7 +15,9 @@ export async function readImportedText(files, extension) {
   if (files.length !== 1)
     throw new Error('Import one file at a time. Your content has not changed.');
   const file = files[0];
-  if (!file.name.toLowerCase().endsWith(extension)) throw new Error(`Choose a ${extension} file.`);
+  const extensions = Array.isArray(extension) ? extension : [extension];
+  if (!extensions.some((value) => file.name.toLowerCase().endsWith(value)))
+    throw new Error(`Choose a ${extensions.join(', ')} file.`);
   return readTextFile(file);
 }
 

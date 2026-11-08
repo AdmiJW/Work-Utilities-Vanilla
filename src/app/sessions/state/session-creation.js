@@ -1,12 +1,13 @@
 import { nextViewedAt } from '../functions/session-recency.js';
 import { normalizeBaseName } from '../functions/session-filename.js';
+import { tools } from '../../shared/tool-details.js';
 
 export async function createSession(state, toolId, name, source = '', initial = {}) {
   if (state.busy) return null;
   state.cancelNavigation();
   const id = crypto.randomUUID();
   const number = ++state.counters[toolId];
-  const title = toolId === 'sql-formatter' ? 'SQL Formatter' : 'Output Analyzer';
+  const title = tools[toolId].title;
   const now = Date.now();
   const summary = {
     id,

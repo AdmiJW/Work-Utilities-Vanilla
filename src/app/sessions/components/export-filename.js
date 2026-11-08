@@ -1,4 +1,6 @@
 import { element } from '../../shared/dom.js';
+import { registerSaveDraft } from '../../shared/save-drafts.js';
+import { normalizeBaseName } from '../functions/session-filename.js';
 
 export function createExportFilename(state, id, extension) {
   const input = element('input', {
@@ -12,6 +14,21 @@ export function createExportFilename(state, id, extension) {
     if (input.value !== state.fileName(id)) state.setFileName(id, input.value);
     input.value = state.fileName(id);
   };
+  registerSaveDraft(input, () => {
+    if (!normalizeBaseName(input.value)) {
+      input.setAttribute('aria-invalid', 'true');
+      input.setCustomValidity('Enter a filename.');
+      return { sessionId: id, valid: false, error: 'Enter a filename.' };
+    }
+    input.removeAttribute('aria-invalid');
+    input.setCustomValidity('');
+    commit();
+    return { sessionId: id, valid: true };
+  });
+  input.addEventListener('input', () => {
+    input.removeAttribute('aria-invalid');
+    input.setCustomValidity('');
+  });
   input.addEventListener('blur', commit);
   input.addEventListener('change', commit);
   input.addEventListener('keydown', (event) => {

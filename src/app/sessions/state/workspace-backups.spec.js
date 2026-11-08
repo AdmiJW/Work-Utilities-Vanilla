@@ -20,6 +20,20 @@ afterEach(async () => {
 });
 
 describe('workspace backup operations', () => {
+  it('restores an older backup then creates and round-trips Markdown sessions', async () => {
+    const { state, backups } = await workspace();
+    await state.create('sql-formatter');
+    const legacy = await backups.export();
+    delete legacy.workspace.counters['markdown-editor'];
+    expect(await backups.restore(legacy)).toBe(true);
+    const id = await state.create('markdown-editor', undefined, '# Portable\r\n');
+    expect(state.activeSession.name).toBe('Markdown Editor 01');
+    state.updateOptions(id, { mode: 'reading', wide: true });
+    const saved = await backups.export();
+    expect(await backups.restore(saved)).toBe(true);
+    expect(state.document(id).source).toBe('# Portable\r\n');
+    expect(state.document(id).options).toMatchObject({ mode: 'reading', wide: true });
+  });
   it('restores retained sessions, empty sessions, IDs, order, source, preferences and the initially active tab', async () => {
     const { state, backups } = await workspace();
     const first = await state.create('sql-formatter', 'First', 'SELECT 0001;\r\n');

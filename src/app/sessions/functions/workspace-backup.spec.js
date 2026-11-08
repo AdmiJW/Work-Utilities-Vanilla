@@ -28,6 +28,20 @@ function backup() {
   );
 }
 describe('workspace backup interchange', () => {
+  it('accepts Markdown sessions and legacy backups without their new counter', () => {
+    const legacy = backup();
+    expect(
+      readWorkspaceBackup(JSON.stringify(legacy)).workspace.counters['markdown-editor'],
+    ).toBeUndefined();
+    const value = backup();
+    value.summaries[0].toolId = 'markdown-editor';
+    value.documents[0].source = '# A note\r\n';
+    value.documents[0].options = { mode: 'reading', wide: true };
+    value.workspace.counters['markdown-editor'] = 1;
+    expect(readWorkspaceBackup(JSON.stringify(value))).toEqual(value);
+    value.workspace.counters['markdown-editor'] = -1;
+    expect(() => readWorkspaceBackup(JSON.stringify(value))).toThrow();
+  });
   it('exports a legacy missing modification time using its creation-time fallback', () => {
     const value = backup();
     const summaries = structuredClone(value.summaries);

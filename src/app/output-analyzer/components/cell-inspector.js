@@ -120,6 +120,21 @@ export function createCellInspector(initialMode, modeChanged, closed) {
     ),
     json,
   );
+  // Browser-native End scrolling differs for focusable regions. Keep the panel
+  // deterministic while allowing its textareas and controls to own their keys.
+  panel.addEventListener('keydown', (event) => {
+    if (
+      event.target !== panel ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.altKey ||
+      event.shiftKey ||
+      !['Home', 'End'].includes(event.key)
+    )
+      return;
+    event.preventDefault();
+    panel.scrollTop = event.key === 'Home' ? 0 : panel.scrollHeight;
+  });
 
   function render() {
     shallow.setAttribute('aria-pressed', String(mode === 'shallow'));

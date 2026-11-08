@@ -1,0 +1,398 @@
+.markdown-tool {
+  min-width: 0;
+}
+.markdown-tool .tool-toolbar {
+  flex-wrap: wrap;
+}
+.md-view-toolbar,
+.md-formatting {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 7px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
+}
+.md-view-toolbar {
+  justify-content: space-between;
+}
+.md-modes {
+  display: flex;
+  gap: 4px;
+}
+.md-formatting button {
+  min-width: 30px;
+  padding: 5px 8px;
+  font-size: 12px;
+}
+.md-formatting select {
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 12px;
+  padding: 5px;
+}
+.markdown-host {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--panel);
+}
+.markdown-host > .md-find-overlay {
+  position: absolute !important;
+  display: block !important;
+  height: auto !important;
+  top: 8px;
+  right: 14px;
+  width: 470px;
+  max-width: calc(100% - 24px);
+  z-index: 30;
+  pointer-events: none;
+}
+.md-find-overlay .cm-panels {
+  position: static !important;
+  border: 0;
+  background: transparent;
+}
+.md-find-widget {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 7px;
+  box-shadow: 0 5px 22px #0003;
+  color: var(--text);
+  font-size: 12px;
+}
+.md-find-row,
+.md-replace-row {
+  display: flex;
+  gap: 3px;
+  align-items: center;
+}
+.md-find-widget input {
+  min-width: 50px;
+  flex: 1;
+  width: 100px;
+  border: 1px solid var(--border);
+  background: var(--panel-raised);
+  border-radius: 4px;
+  padding: 5px 7px;
+  font: inherit;
+  color: var(--text);
+}
+.md-find-widget button {
+  flex-shrink: 0;
+  min-width: 24px;
+  height: 27px;
+  padding: 2px 5px;
+  font: inherit;
+}
+.md-find-row button {
+  border-color: transparent;
+  background: transparent;
+}
+.md-find-row button[aria-pressed='true'] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+}
+.md-find-count {
+  min-width: 55px;
+  max-width: 95px;
+  font-size: 10px;
+  text-align: center;
+  color: var(--muted);
+}
+.md-find-error input[aria-label='Find'] {
+  border-color: var(--json-literal);
+}
+.md-find-error .md-find-count {
+  color: var(--json-literal);
+}
+.md-find-widget button[aria-label='Toggle Replace'].expanded {
+  transform: rotate(90deg);
+}
+.markdown-host > .cm-editor {
+  height: 100%;
+  color: var(--text);
+  background: var(--panel);
+}
+.markdown-host > .cm-editor > .cm-scroller {
+  overflow: auto;
+  font-family: inherit;
+  line-height: 1.65;
+}
+.markdown-host > .cm-editor > .cm-scroller > .cm-content {
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 30px 120px;
+  flex: 1 0 0;
+  min-width: 0;
+}
+.md-wide .markdown-host > .cm-editor > .cm-scroller > .cm-content {
+  max-width: none;
+}
+.markdown-host[data-mode='source'] > .cm-editor > .cm-scroller {
+  font-family: 'Cascadia Code', Consolas, monospace;
+  font-size: 13px;
+}
+.markdown-host .cm-focused {
+  outline: none;
+}
+.markdown-host .cm-cursor {
+  border-left-color: var(--text);
+}
+.markdown-host .cm-gutters {
+  color: var(--muted);
+  background: var(--panel-raised);
+  border-color: var(--border);
+}
+.markdown-host .cm-selectionBackground,
+.markdown-host .cm-focused .cm-selectionBackground {
+  background: var(--accent-soft) !important;
+}
+.markdown-host .cm-line {
+  padding: 0 3px;
+  overflow-wrap: anywhere;
+}
+.md-paragraph {
+  margin: 0;
+}
+.markdown-host .cm-line.md-paragraph {
+  padding-top: 4px;
+}
+.md-heading {
+  font-weight: 700;
+  line-height: 1.35;
+  margin: 0;
+  color: var(--text);
+}
+.markdown-host .cm-line.md-heading {
+  padding-top: 15px;
+  padding-bottom: 8px;
+}
+.md-h1 {
+  font-size: 2em;
+}
+.markdown-host:not([data-mode='source']) .md-heading span {
+  text-decoration: none;
+}
+.md-h2 {
+  font-size: 1.6em;
+}
+.md-h3 {
+  font-size: 1.3em;
+}
+.md-h4 {
+  font-size: 1.15em;
+}
+.md-strong {
+  font-weight: 700;
+}
+.md-emphasis {
+  font-style: italic;
+}
+.md-strike {
+  text-decoration: line-through;
+}
+.md-inline-code {
+  font-family: Consolas, monospace;
+  background: var(--panel-raised);
+  border-radius: 3px;
+  padding: 1px 2px;
+}
+.md-edit-status {
+  position: absolute;
+  bottom: 12px;
+  left: 16px;
+  right: 16px;
+  z-index: 35;
+  width: fit-content;
+  max-width: calc(100% - 32px);
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  background: var(--panel-raised);
+  color: var(--text);
+  font-size: 12px;
+  pointer-events: none;
+}
+.md-code-line {
+  font-family: Consolas, monospace;
+  font-size: 13px;
+  background: var(--panel-raised);
+  border-left: 3px solid var(--border);
+  padding-left: 12px !important;
+}
+.md-fence-line {
+  min-height: 1.65em;
+}
+.md-quote {
+  border-left: 3px solid var(--accent);
+  padding-left: 14px !important;
+  color: var(--muted);
+}
+.md-link,
+.markdown-host a {
+  color: var(--accent);
+  text-decoration: underline;
+  cursor: pointer;
+}
+.md-divider {
+  position: relative;
+  margin: 0;
+  min-height: 1px;
+}
+.markdown-host .cm-line.md-divider {
+  padding-top: 16px;
+  padding-bottom: 16px;
+}
+.md-divider-preview::after {
+  content: '';
+  position: absolute;
+  left: 3px;
+  right: 3px;
+  top: 50%;
+  border-top: 1px solid var(--border);
+}
+.md-task {
+  accent-color: var(--accent);
+  vertical-align: middle;
+  cursor: pointer;
+}
+.md-table-widget {
+  margin: 0;
+  padding: 14px 0;
+  max-width: 100%;
+  font-size: 14px;
+}
+.md-table-tools {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  margin: 0 0 6px;
+}
+.md-table-tools button {
+  font-size: 11px;
+  padding: 4px 7px;
+}
+.md-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+.md-table-widget table {
+  border-collapse: collapse;
+  width: 100%;
+  table-layout: fixed;
+  min-width: 240px;
+}
+.md-table-widget td,
+.md-table-widget th {
+  border: 1px solid var(--border);
+  padding: 8px 10px;
+  min-width: 90px;
+  height: 38px;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.md-table-widget .md-selected-cell {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent);
+}
+.md-table-widget th {
+  background: var(--panel-raised);
+  font-weight: 650;
+}
+.md-table-widget td:focus-within,
+.md-table-widget th:focus-within {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.md-cell-editor .cm-editor {
+  background: transparent;
+  min-width: 0;
+  font-size: 14px;
+}
+.md-cell-editor .cm-scroller {
+  font-family: inherit;
+  overflow: hidden;
+}
+.md-cell-editor .cm-content {
+  padding: 0;
+  min-height: 22px;
+}
+.md-cell-editor .cm-line {
+  padding: 0;
+}
+.md-image {
+  display: inline-flex;
+  flex-direction: column;
+  max-width: 100%;
+  vertical-align: top;
+  margin: 8px 0;
+}
+.md-image img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  object-fit: contain;
+  border-radius: 5px;
+}
+.md-image-tools {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding-top: 5px;
+}
+.md-image-tools button {
+  font-size: 11px;
+  padding: 4px 7px;
+}
+.md-image-placeholder {
+  display: inline-block;
+  padding: 10px 14px;
+  border: 1px dashed var(--border);
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 12px;
+}
+.md-dialog-input {
+  display: block;
+  min-width: 280px;
+  width: 100%;
+  margin-top: 8px;
+  padding: 8px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.markdown-host .cm-panels {
+  background: var(--panel-raised);
+  color: var(--text);
+  border-color: var(--border);
+}
+.markdown-host .cm-search input {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  color: var(--text);
+}
+@media (max-width: 900px) {
+  .md-view-toolbar,
+  .md-formatting {
+    padding: 7px 10px;
+  }
+  .markdown-host > .cm-editor > .cm-scroller > .cm-content {
+    padding: 18px 16px 100px;
+  }
+  .markdown-tool .tool-toolbar {
+    padding: 8px 10px;
+  }
+}

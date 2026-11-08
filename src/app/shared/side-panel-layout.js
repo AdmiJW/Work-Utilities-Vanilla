@@ -1,9 +1,14 @@
 import { element } from './dom.js';
+import { animateEnter, animateExit, cancelMotion } from './motion.js';
 
 export function createSidePanelLayout(stage, main, { width: initialWidth, label, changed }) {
   let width = Math.max(280, Math.min(720, Number(initialWidth) || 360));
   let panel = null;
   let drag = null;
+  let returnFocus = null;
+  const ghosts = new Set();
+  stage.classList.add('motion-panel-stage');
+  const settled = () => stage.dispatchEvent(new Event('layoutsettled', { bubbles: true }));
   const media = matchMedia('(max-width: 1000px)');
   const divider = element('div', {
     className: 'inspector-resizer',
@@ -27,10 +32,14 @@ export function createSidePanelLayout(stage, main, { width: initialWidth, label,
     if (drag) {
       drag = null;
       changed(width);
+      stage.classList.remove('is-resizing');
+      settled();
     }
   };
   divider.addEventListener('pointerdown', (event) => {
+    if (panel) cancelMotion(panel);
     drag = { x: event.clientX, width };
+    stage.classList.add('is-resizing');
     divider.setPointerCapture(event.pointerId);
     event.preventDefault();
   });
@@ -60,12 +69,53 @@ export function createSidePanelLayout(stage, main, { width: initialWidth, label,
   return {
     show(value) {
       if (panel === value) return;
-      panel?.remove();
+      if (panel) {
+        const previous = panel,
+          box = previous.getBoundingClientRect(),
+          parent = stage.getBoundingClientRect();
+        const focused = previous.contains(document.activeElement);
+        cancelMotion(previous);
+        if (box.width && box.height) {
+          const ghost = previous.cloneNode(true);
+          ghost.classList.add('motion-panel-ghost');
+          ghost.inert = true;
+          ghost.setAttribute('aria-hidden', 'true');
+          ghost.removeAttribute('id');
+          for (const child of ghost.querySelectorAll('[id]')) child.removeAttribute('id');
+          Object.assign(ghost.style, {
+            position: 'absolute',
+            left: `${box.left - parent.left}px`,
+            top: `${box.top - parent.top}px`,
+            width: `${box.width}px`,
+            height: `${box.height}px`,
+            zIndex: '40',
+          });
+          stage.append(ghost);
+          ghosts.add(ghost);
+          void animateExit(ghost, { kind: 'panel' }).then(() => {
+            ghost.remove();
+            ghosts.delete(ghost);
+          });
+        }
+        previous.remove();
+        if (focused && returnFocus?.isConnected) returnFocus.focus({ preventScroll: true });
+      }
       panel = value;
-      if (panel) stage.append(panel);
+      if (panel) {
+        returnFocus = document.activeElement;
+        stage.append(panel);
+      }
       render();
+      settled();
+      if (panel) void animateEnter(panel, { kind: 'panel' }).then(settled);
     },
     dispose() {
+      if (panel) cancelMotion(panel);
+      for (const ghost of ghosts) {
+        cancelMotion(ghost);
+        ghost.remove();
+      }
+      ghosts.clear();
       observer.disconnect();
       media.removeEventListener('change', render);
     },

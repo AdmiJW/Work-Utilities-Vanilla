@@ -3,6 +3,9 @@ const record = (value) => value !== null && typeof value === 'object' && !Array.
 /** Validate newly introduced options before a backup can replace the live workspace. */
 export function validateDocumentOptions(document, invalid) {
   const options = document.options;
+  if (options.mode !== undefined && !['live', 'source', 'reading'].includes(options.mode))
+    invalid();
+  if (options.wide !== undefined && typeof options.wide !== 'boolean') invalid();
   for (const key of ['sheetNames', 'tableSearches']) {
     if (options[key] === undefined) continue;
     if (

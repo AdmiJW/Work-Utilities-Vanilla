@@ -1,6 +1,7 @@
 import { element, button, clear } from '../../shared/dom.js';
-import { openDialog } from '../../shared/dialog.js';
+import { openDialog, closeDialog } from '../../shared/dialog.js';
 import { debugCases, debugScreenshots } from '../functions/debug-cases.js';
+import { tools } from '../../shared/tool-details.js';
 
 export function openDebugDialog(state) {
   const cases = debugCases();
@@ -9,9 +10,10 @@ export function openDebugDialog(state) {
   const list = element('div', { className: 'debug-cases' });
   const error = element('p', { role: 'alert', className: 'notice error', hidden: true });
   const groups = element('nav', { className: 'debug-groups', 'aria-label': 'Debug tools' });
-  const groupButtons = ['sql-formatter', 'output-analyzer'].map((toolId) =>
+  const toolIds = Object.keys(tools);
+  const groupButtons = toolIds.map((toolId) =>
     button(
-      toolId === 'sql-formatter' ? 'SQL Formatter' : 'Output Analyzer',
+      tools[toolId].title,
       () => {
         selected = toolId;
         render();
@@ -32,7 +34,7 @@ export function openDebugDialog(state) {
     error.hidden = true;
     try {
       const images = testCase.screenshots ? await debugScreenshots() : [];
-      if (!dialog.open) return;
+      if (!dialog.open || dialog.inert) return;
       const id = await state.create(testCase.toolId, `Debug · ${testCase.title}`, testCase.source, {
         fileBaseName: testCase.fileBaseName,
         images,
@@ -43,7 +45,7 @@ export function openDebugDialog(state) {
             : {}),
         },
       });
-      if (id) dialog.close();
+      if (id) void closeDialog(dialog);
     } catch (failure) {
       error.textContent = failure.message;
       error.hidden = false;
@@ -54,10 +56,7 @@ export function openDebugDialog(state) {
   };
   function render() {
     groupButtons.forEach((button, index) =>
-      button.setAttribute(
-        'aria-pressed',
-        String(selected === (index === 0 ? 'sql-formatter' : 'output-analyzer')),
-      ),
+      button.setAttribute('aria-pressed', String(selected === toolIds[index])),
     );
     clear(
       list,

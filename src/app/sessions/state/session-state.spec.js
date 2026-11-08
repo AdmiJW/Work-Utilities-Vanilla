@@ -49,6 +49,50 @@ afterEach(() => {
 });
 
 describe('session state and recency', () => {
+  it('manual save flushes the active session plus an explicit rename target only', async () => {
+    const { state, repository } = await workspace(true);
+    await state.activate('b');
+    await state.activate('c');
+    await state.activate('a');
+    for (const id of ['a', 'b', 'c']) state.updateSource(id, `edited ${id}`);
+    state.rename('b', 'Saved inactive name');
+    const result = await state.saveActive('b');
+    expect(result).toEqual({ status: 'saved', ids: ['a', 'b'] });
+    expect(repository.save.mock.calls.map((call) => call[0].id)).toEqual(['a', 'b']);
+    expect(state.autosave.pending.has('c')).toBe(true);
+    expect(state.activeId).toBe('a');
+  });
+  it('manual save reports busy, memory-only and failures without discarding pending content', async () => {
+    const { state, repository } = await workspace(true);
+    state.busy = true;
+    expect((await state.saveActive()).status).toBe('busy');
+    expect(repository.save).not.toHaveBeenCalled();
+    state.busy = false;
+    state.updateSource('a', 'recover me');
+    repository.save.mockRejectedValueOnce(new Error('quota'));
+    expect((await state.saveActive()).status).toBe('error');
+    expect(state.autosave.pending.has('a')).toBe(true);
+    repository.persistent = false;
+    expect((await state.saveActive()).status).toBe('memory-only');
+  });
+  it('coalesces manual saves and drains edits made during an in-flight write', async () => {
+    const { state, repository } = await workspace(true),
+      gate = deferred();
+    repository.save.mockImplementationOnce(() => gate.promise);
+    state.updateSource('a', 'first');
+    const saving = state.saveActive(),
+      again = state.saveActive();
+    expect(again).toBe(saving);
+    await Promise.resolve();
+    await Promise.resolve();
+    state.updateSource('a', 'newer');
+    gate.resolve();
+    await saving;
+    expect(repository.save).toHaveBeenLastCalledWith(
+      expect.objectContaining({ id: 'a' }),
+      expect.objectContaining({ source: 'newer' }),
+    );
+  });
   it('persists renaming an unopened restored tab without reading or rewriting its document', async () => {
     const { state, repository } = await workspace(true);
     repository.read.mockClear();

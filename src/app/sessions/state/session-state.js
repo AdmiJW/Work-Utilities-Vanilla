@@ -12,7 +12,7 @@ export class SessionState extends EventTarget {
     this.summaries = [];
     this.documents = new Map();
     this.order = [];
-    this.counters = { 'sql-formatter': 0, 'output-analyzer': 0 };
+    this.counters = { 'sql-formatter': 0, 'output-analyzer': 0, 'markdown-editor': 0 };
     this.activeId = null;
     this.openingId = null;
     this.openingError = '';
@@ -69,7 +69,12 @@ export class SessionState extends EventTarget {
     };
     const open = this.summaries.filter((item) => item.isOpen).map((item) => item.id);
     this.order = [...new Set([...(saved?.order ?? []).filter((id) => open.includes(id)), ...open])];
-    this.counters = { 'sql-formatter': 0, 'output-analyzer': 0, ...saved?.counters };
+    this.counters = {
+      'sql-formatter': 0,
+      'output-analyzer': 0,
+      'markdown-editor': 0,
+      ...saved?.counters,
+    };
     const activeId = this.order.includes(saved?.activeId) ? saved.activeId : this.order[0];
     if (activeId) await this.activate(activeId);
   }
@@ -228,6 +233,47 @@ export class SessionState extends EventTarget {
 
   close(id) {
     return this.closeMany([id]);
+  }
+
+  saveActive(extraSessionId) {
+    if (this.busy || this.openingId) return Promise.resolve({ status: 'busy', ids: [] });
+    const ids = [
+      ...new Set(
+        [this.activeId, extraSessionId].filter(
+          (id) => id && this.summaries.some((s) => s.id === id),
+        ),
+      ),
+    ];
+    if (!ids.length) return Promise.resolve({ status: 'no-session', ids: [] });
+    this.manualSaveIds ??= new Set();
+    for (const id of ids) this.manualSaveIds.add(id);
+    if (this.manualSavePromise) return this.manualSavePromise;
+    const generation = this.generation,
+      previousError = this.error;
+    this.manualSavePromise = (async () => {
+      const saved = new Set();
+      while (this.manualSaveIds.size) {
+        const batch = [...this.manualSaveIds];
+        this.manualSaveIds.clear();
+        await this.preferenceQueue;
+        if (this.busy || this.generation !== generation) return { status: 'busy', ids: [...saved] };
+        if (this.error && this.error !== previousError)
+          return { status: 'error', ids: [...saved], error: this.error };
+        for (const id of batch) {
+          if (!this.summaries.some((s) => s.id === id)) continue;
+          if (!(await this.autosave.flush(id)))
+            return { status: 'error', ids: [...saved], error: this.autosave.error };
+          saved.add(id);
+        }
+      }
+      return { status: this.repository.persistent ? 'saved' : 'memory-only', ids: [...saved] };
+    })()
+      .catch((error) => ({ status: 'error', ids: [], error: error.message }))
+      .finally(() => {
+        this.manualSavePromise = null;
+        this.manualSaveIds.clear();
+      });
+    return this.manualSavePromise;
   }
   closeMany(ids) {
     return this.lifecycle.remove(ids, false);

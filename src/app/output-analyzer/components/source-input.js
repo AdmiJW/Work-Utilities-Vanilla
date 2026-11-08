@@ -1,4 +1,5 @@
 import { element, button } from '../../shared/dom.js';
+import { animateEnter, cancelMotion } from '../../shared/motion.js';
 import {
   chooseFile,
   chooseImportMode,
@@ -72,12 +73,15 @@ export function createSourceInput(state, id, failed, imported) {
   return {
     element: section,
     update() {
+      const wasHidden = source.hidden;
       source.hidden = !!doc().options.inputCollapsed;
+      if (wasHidden && !source.hidden) void animateEnter(source, { kind: 'view' });
       toggle.setAttribute('aria-expanded', String(!source.hidden));
       size.textContent = `${doc().source.length.toLocaleString()} characters`;
       editor.sync(doc().source);
     },
     dispose() {
+      cancelMotion(source);
       alive = false;
       editor.dispose();
       stopDrop();

@@ -1,6 +1,7 @@
 import { element, button } from '../../shared/dom.js';
 import { icon } from '../../shared/icons.js';
 import { sessionRecency } from '../../sessions/public-api.js';
+import { tools } from '../../shared/tool-details.js';
 
 export function renderWorkspaceHome(state, openLibrary) {
   const createButtons = () =>
@@ -13,6 +14,9 @@ export function renderWorkspaceHome(state, openLibrary) {
       button([icon('table'), 'New Output Analyzer', icon('plus', 13)], () =>
         state.create('output-analyzer'),
       ),
+      button([icon('markdown'), 'New Markdown Editor', icon('plus', 13)], () =>
+        state.create('markdown-editor'),
+      ),
     );
   if (!state.summaries.length)
     return element(
@@ -23,12 +27,23 @@ export function renderWorkspaceHome(state, openLibrary) {
       element(
         'p',
         {},
-        'Prepare SQL scripts and make sense of execution output. Everything is processed here, on your computer.',
+        'Prepare SQL scripts, make sense of execution output, and write Markdown documents. Everything is processed here, on your computer.',
       ),
       createButtons(),
       element(
         'div',
         { className: 'welcome-cards' },
+        element(
+          'article',
+          {},
+          icon('markdown', 25),
+          element('h2', {}, 'Write & preview inline'),
+          element(
+            'p',
+            {},
+            'Edit Markdown in one live document, with visual tables, local images, and portable Markdown export.',
+          ),
+        ),
         element(
           'article',
           {},
@@ -89,7 +104,7 @@ export function renderWorkspaceHome(state, openLibrary) {
                 element(
                   'span',
                   { className: 'session-icon' },
-                  icon(session.toolId === 'sql-formatter' ? 'code' : 'table', 18),
+                  icon(tools[session.toolId].icon, 18),
                 ),
                 element(
                   'span',
@@ -98,11 +113,7 @@ export function renderWorkspaceHome(state, openLibrary) {
                   element(
                     'small',
                     {},
-                    state.openingId === session.id
-                      ? 'Opening…'
-                      : session.toolId === 'sql-formatter'
-                        ? 'SQL Formatter'
-                        : 'Output Analyzer',
+                    state.openingId === session.id ? 'Opening…' : tools[session.toolId].title,
                   ),
                 ),
                 element(

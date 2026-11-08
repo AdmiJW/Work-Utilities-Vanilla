@@ -32,7 +32,7 @@ export async function uploadScreenshots(page, files) {
   await (await chooser).setFiles(files);
 }
 
-export async function pasteOrDropScreenshot(page, file, action) {
+export async function pasteOrDropScreenshot(page, file, action, target = null) {
   const transfer = await page.evaluateHandle(
     ({ name, type, bytes }) => {
       const transfer = new DataTransfer();
@@ -41,7 +41,7 @@ export async function pasteOrDropScreenshot(page, file, action) {
     },
     { name: file.name, type: file.mimeType, bytes: [...file.buffer] },
   );
-  const panel = page.getByRole('region', { name: 'Unit Test screenshots', exact: true });
+  const panel = target ?? page.getByRole('region', { name: 'Unit Test screenshots', exact: true });
   try {
     if (action === 'paste')
       await panel.evaluate((element, clipboardData) => {

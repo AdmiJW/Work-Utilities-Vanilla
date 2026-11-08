@@ -1,6 +1,6 @@
 # Work Utilities Vanilla
 
-A portable, browser-only workspace for SQL Server scripts and DER/DPR execution output. The production application is **one self-contained HTML file**: JavaScript, CSS, icons, libraries, background workers, and license notices are included. Application processing uses no backend, CDN, account, analytics, or network connection.
+A portable, browser-only workspace for SQL Server scripts, DER/DPR execution output, and Markdown documents. The production application is **one self-contained HTML file**: JavaScript, CSS, icons, libraries, background workers, and license notices are included. Application processing uses no backend, CDN, account, analytics, or network connection.
 
 This is an independent repository alongside **Work-Utilities-Angular**. It starts with its own saved sessions; it does not read or migrate the Angular application's browser database.
 
@@ -8,7 +8,7 @@ This is an independent repository alongside **Work-Utilities-Angular**. It start
 
 1. Obtain the repository's [index.html](index.html), `dist/work-utilities.html`, or use **Download offline app** on the hosted application.
 2. Save the HTML somewhere you can keep it, then open it in desktop **Chrome or Edge**.
-3. Use either tool, including file imports and exports, without internet access. No installation, local server, extension, PWA, or DevTools is required.
+3. Use any tool, including file imports and exports, without internet access. No installation, local server, extension, PWA, or DevTools is required.
 
 The download action produces an empty application file. It does not embed the currently displayed SQL, results, or workspace. Saved sessions are handled separately by browser storage and workspace backups.
 
@@ -30,7 +30,7 @@ Use the raw contents when copying: GitHub may omit the normal preview for large 
 ### SQL Formatter
 
 - Start a session from the sidebar. **Open SQL** or drop one `.sql` file onto the editor. An empty session imports directly; otherwise choose **Replace all**, **Insert at cursor**, or **Cancel**. The session name stays unchanged.
-- CodeMirror provides local SQL Server highlighting, line numbers, folding, search/replace, word navigation, selections, and undo/redo. Ctrl+F searches; Ctrl+H replaces; Ctrl+Z undoes; Ctrl+Y or Ctrl+Shift+Z redoes. Tab inserts four spaces.
+- CodeMirror provides local SQL Server highlighting, line numbers, folding, search/replace, word navigation, selections, and undo/redo. Ctrl+F searches; Ctrl+H replaces; Ctrl+Z undoes; Ctrl+Y or Ctrl+Shift+Z redoes. Tab indents current/selected lines by four spaces; Shift+Tab removes up to four spaces. Escape then Tab moves keyboard focus out of the editor.
 - **Prettify** retains comments and formats Transact-SQL with four-space indentation.
 - **One-line** removes comments, collapses whitespace outside quoted values, keeps each statement on one physical line, adds its final semicolon, and places one blank line between statements. Statements must already be separated with semicolons. SELECT, INSERT, UPDATE, DELETE, CTEs, and nested expressions are supported.
 - Procedural scripts, GO batches, malformed quoting, and physical newlines inside quoted values are rejected instead of silently rewritten. SQL is never executed.
@@ -63,6 +63,18 @@ Select **Analyze output** to create a sheet for every SELECT, including repeated
 
 The protocol is documented in [sql_output_format.md](sql_output_format.md). Synthetic SQL and all nine analyzer examples are in [examples](examples/).
 
+### Markdown Editor
+
+- **Live Preview** edits Markdown in one surface: the active block reveals syntax while the rest stays formatted. **Source** shows all Markdown; **Reading** is fully formatted and read-only. Mode changes preserve content and undo history.
+- Use headings, emphasis, links, quotes, lists, task checkboxes, tables, fenced code, and dividers. The toolbar and Ctrl+B / Ctrl+I / Ctrl+K apply formatting at the selection. The top-right **Find** widget toggles from its toolbar button. Ctrl+F opens/focuses it and can use selected text; Ctrl+H expands Replace in editable modes; Escape closes. It includes case/whole-word/regex controls, navigation, replacement, and capped match counts. Closing retains its query and options for the open session. **Wide** expands the reading column.
+- **Tab / Shift+Tab** indent/outdent current or selected lines by four spaces in all three tools, including Markdown code blocks. Reading mode keeps focus navigation; Escape then Tab leaves an editor. Markdown list edits are guarded: an item needs a preceding sibling to indent, root outdent is blocked, and items with unselected children cannot move. Continuation text follows its item; explicitly selected groups change atomically. Mixed list types are allowed, but invalid four-space changes are blocked with a brief explanation.
+- Click a table cell to edit inline Markdown with a caret at the hit position. Up/Down traverse wrapped lines; entering another cell lands at the end of its first/last visible line. Right at the end moves to the next cell at its start; Left at the start moves to the previous cell at its end. These wrap across rows and exit at table boundaries without modifying source. Shift+arrows select within the cell. Tab / Shift+Tab navigate with a caret; final-cell Tab adds a row and first-cell Shift+Tab exits backward. Enter moves down; Escape exits. Missing trailing cells are materialized only when edited. Row/column and alignment controls share document undo.
+- **Shift+Enter** and multiline paste create in-cell lines stored as safe `<br>` tokens. Inline code is split into valid spans around breaks; breaks inside link/image destinations are rejected atomically. Existing break-tag spelling is preserved by unrelated edits. Cells support inline formatting and line breaks; merged cells and block content are excluded.
+- **Open Markdown** or drop one .md, .markdown, or .txt file. Empty sessions load directly; otherwise choose Replace, Insert, or Cancel. **Copy Markdown** and **Export Markdown** include canonical source. UTF-8 exports preserve LF/CRLF style; untouched Markdown is not autoformatted.
+- Add, paste, or drop original PNG/JPEG images, embedded in Markdown for portable offline documents. Each new image is limited to 5 MiB / 16 megapixels; new imports and image insertions must fit within 20 MiB of Markdown. Existing saved/restored oversized documents remain openable and exportable. Image controls edit alt text, replace, and remove.
+- Remote/relative images show placeholders without requests. Raw HTML is literal text, with the specific exception of attribute-free `<br>` tags inside table-cell text. Math, Mermaid, wiki links, rich HTML paste, image resizing/captions, and HTML/PDF export are outside this version. SQL, JavaScript/TypeScript, JSON, Python, HTML, and CSS highlighting is bundled; other code is plain text.
+- Documents, view mode, width, selection, and scroll use normal sessions, autosave, and backups. Existing workspace backups remain supported.
+
 ### Excel export
 
 **Export Excel includes every valid parsed row in original order**, regardless of grid sorting or filtering. SELECT sheets include the original SQL, run marker, row counts, and headers. `_Statements` and `_Diagnostics` are included when applicable.
@@ -70,6 +82,12 @@ The protocol is documented in [sql_output_format.md](sql_output_format.md). Synt
 Every recoverable data range is a real **Excel Table** with filters and banded rows; SQL metadata stays above it. Known zero-row results have header-only tables. Unknown zero-row projections retain metadata and an explanation without fabricated columns. Worksheet names follow renamed result tabs, sanitized and made unique for Excel. Table headers are made nonempty and unique and limited to 255 characters; data values are unchanged.
 
 Data cells are literal Excel text, including values beginning with `=`. There is no numeric/date conversion or scientific notation. Excel's row, column, cell-length, and line-feed limits are validated before download. Oversized exports are blocked with sheet/row/column details; original data is retained without truncation.
+
+## Saving and interaction
+
+**Ctrl+S** (Cmd+S on macOS) immediately saves the active session to browser storage across all three tools. It also commits valid focused filename/tab-name drafts while preserving focus. Renaming an inactive tab saves that session too. Inline feedback identifies the saved session; memory-only mode and storage errors remain visible. Use export actions for portable files and workspace backups.
+
+Dialogs, menus, panels, sidebar changes, and tool switches use subtle motion. Animations follow the system reduced-motion preference; typing, selections, cursor movement, and direct panel resizing remain immediate.
 
 ## Tabs, sessions, and backups
 
@@ -92,7 +110,7 @@ Use one editing window for each browser workspace. Supported browser locks enfor
 
 **Browser compatibility** shows the application/version and labeled, colored chips for autosave and background processing. Background processing is unverified until a worker starts or falls back. Dependency notices remain embedded in the HTML without a license section in the dialog. Clipboard denial for text copying opens selected text for Ctrl+C.
 
-**Debug** opens a built-in catalog grouped into SQL Formatter and Output Analyzer. It includes the three SQL examples, nine analyzer examples, and focused regression cases. Choosing a case creates a fresh, saved session with predefined names, source, options, and synthetic screenshots where relevant; analyzer cases open with prepared results. All fixtures are embedded in the HTML. Existing sessions are not replaced, and custom template management is not included.
+**Debug** opens a built-in catalog grouped into SQL Formatter, Output Analyzer, and Markdown Editor. It includes the three SQL examples, nine analyzer examples, and focused regression cases. Markdown has six embedded examples covering the full showcase, typography/blocks, code languages, visual tables, offline links/images, and navigation/search. Their source files are in [examples/markdown-editor](examples/markdown-editor/). Choosing a case creates a fresh, saved session with predefined names, source, options, and synthetic screenshots where relevant; analyzer cases open with prepared results. All fixtures are embedded in the HTML. Existing sessions are not replaced, and custom template management is not included.
 
 Updates are manual: export a workspace backup, obtain the new HTML, replace the local application file, and reopen it. Retain the same location where possible. There are no service workers, background update requests, or automatic reloads.
 
@@ -128,7 +146,7 @@ The source uses JavaScript modules for maintainability. esbuild emits classic in
 
 ### Architecture
 
-`src/app` is organized by feature: `workspace`, `sessions`, `sql-formatter`, `output-analyzer`, `sql-language`, `file-transfer`, `appearance`, and `portable-app`. Each feature introduces the components, state, functions, adapters, and workers it needs. `shared` contains small DOM/dialog/icon/background-task primitives.
+`src/app` is organized by feature: `workspace`, `sessions`, `sql-formatter`, `output-analyzer`, `markdown-editor`, `sql-language`, `file-transfer`, `appearance`, and `portable-app`. Each feature introduces the components, state, functions, adapters, and workers it needs. `shared` contains small DOM/dialog/icon/background-task primitives.
 
 Cross-feature imports use `public-api.js`; the boundary check enforces dependency direction. Stores publish explicit change events. Components retain their editor/grid state while detached for inactive tabs and dispose on closure. Worker jobs are revision-guarded and cancelled when superseded. Keep functions and files focused, with descriptive names; about 250 lines per source file is a review guideline.
 
@@ -149,7 +167,9 @@ The browser suite runs Chrome and Edge in direct-file and hosted modes. Set `PLA
 
 Coverage includes exact SQL/JSON/Excel data, all protocol fixtures, session races and lifecycle failures, backup replacement, unavailable storage/workers/clipboard, downloaded-file offline use, short-screen scrolling, themes, and a 50,000-row representative 20 MB file. Generated reports, screenshots, fixtures, and metrics go into ignored `artifacts/` and `test-results/`; they can be removed after review.
 
-Verified on **27 October 2026**: lint, 70 feature-boundary checks, formatting, **80 unit tests across 17 files**, and the production build passed. All **36 browser workflows passed in Chrome and Edge in both direct-file and hosted modes (144 checks)**, without retries or skipped cases. Focused checks also cover retaining search text when switching sheets before the debounce expires. Coverage includes native Ctrl+V screenshots, upload/drop/reordering, original image bytes and dimensions in Excel, real Excel Tables, generic SELECT fallback, renamed sheets, independent filenames, v1/v2 backups, invalid-image protection, failed-deletion recovery, memory-only/foreground operation, both themes, short-screen scrolling, and offline workspace transfer. The Docker build ran the same quality and unit checks on Linux. Chrome and Edge exercised SQL, unit-test, and result exports against the local container; health, UID 101, HTML checksum equivalence, cache headers, and missing-file responses were checked. The dependency audit reported zero known vulnerabilities. Managed-browser/native Save As checks remain the manual acceptance checklist above. Generated verification artifacts are removed from the delivered repository; the commands above regenerate them.
+Verified for the indentation and table-editing update on **9 November 2026**: `npm run check` passed lint, **95 feature-boundary checks**, formatting, **107 unit tests across 23 files**, and the offline production build. Browser-specific `npm run test:e2e` runs passed all **65 browser workflows in Chrome and Edge in both direct-file and hosted modes (260 checks)**. Coverage includes four-space indentation across all three tools, guarded list nesting and atomic selections, table caret entry and boundary navigation, multiline paste and inline-code splitting, source mappings through search/images/undo, exact source and LF/CRLF preservation, and the updated offline Debug examples. Existing saving, motion, image/import/export, storage recovery, and workspace backup regressions also passed. The regenerated root `index.html` is byte-identical to `dist/work-utilities.html`.
+
+Earlier baseline verification on **27 October 2026**: lint, 70 feature-boundary checks, formatting, **80 unit tests across 17 files**, and the production build passed. All **36 browser workflows passed in Chrome and Edge in both direct-file and hosted modes (144 checks)**, without retries or skipped cases. Focused checks also cover retaining search text when switching sheets before the debounce expires. Coverage includes native Ctrl+V screenshots, upload/drop/reordering, original image bytes and dimensions in Excel, real Excel Tables, generic SELECT fallback, renamed sheets, independent filenames, v1/v2 backups, invalid-image protection, failed-deletion recovery, memory-only/foreground operation, both themes, short-screen scrolling, and offline workspace transfer. The Docker build ran the same quality and unit checks on Linux. Chrome and Edge exercised SQL, unit-test, and result exports against the local container; health, UID 101, HTML checksum equivalence, cache headers, and missing-file responses were checked. The dependency audit reported zero known vulnerabilities. Managed-browser/native Save As checks remain the manual acceptance checklist above. Generated verification artifacts are removed from the delivered repository; the commands above regenerate them.
 
 ## Container
 

@@ -3,6 +3,7 @@ import { startInlineRename } from '../../shared/inline-rename.js';
 import { openContextMenu } from '../../shared/context-menu.js';
 import { icon } from '../../shared/icons.js';
 import { attachTabDrag } from './tab-drag.js';
+import { tools } from '../../shared/tool-details.js';
 
 export function createSessionTabs(state) {
   const host = element('div', {
@@ -18,6 +19,7 @@ export function createSessionTabs(state) {
     if (renaming) return;
     renaming = true;
     startInlineRename(tab, session.name, (name) => state.rename(session.id, name), {
+      saveSessionId: session.id,
       finished: () => {
         renaming = false;
         queueMicrotask(update);
@@ -64,7 +66,7 @@ export function createSessionTabs(state) {
       const current = () => state.summaries.find((item) => item.id === session.id);
       const label = element('span', {}, session.name);
       const tab = button(
-        [icon(session.toolId === 'sql-formatter' ? 'code' : 'table', 13), label],
+        [icon(tools[session.toolId].icon, 13), label],
         () => {
           if (Date.now() >= suppressUntil) void state.activate(session.id);
         },

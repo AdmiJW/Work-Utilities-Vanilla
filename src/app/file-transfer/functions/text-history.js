@@ -9,20 +9,20 @@ export class TextHistory {
   get current() {
     return this.entries[this.index];
   }
-  capture(start, end) {
-    this.entries[this.index] = { ...this.current, start, end };
+  capture(start, end, direction) {
+    this.entries[this.index] = { ...this.current, start, end, ...(direction ? { direction } : {}) };
   }
-  record(text, start, end, group = '') {
+  record(text, start, end, group = '', direction) {
     if (text === this.current.text) {
-      this.capture(start, end);
+      this.capture(start, end, direction);
       return;
     }
     const now = Date.now();
     this.entries.splice(this.index + 1);
     if (group && group === this.group && now - this.recordedAt < 750 && this.index > 0)
-      this.entries[this.index] = { text, start, end };
+      this.entries[this.index] = { text, start, end, ...(direction ? { direction } : {}) };
     else {
-      this.entries.push({ text, start, end });
+      this.entries.push({ text, start, end, ...(direction ? { direction } : {}) });
       this.index++;
     }
     this.group = group;

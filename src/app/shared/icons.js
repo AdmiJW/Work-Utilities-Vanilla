@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Copy,
   X,
+  FilePenLine,
 } from 'lucide';
 
 const icons = {
@@ -41,6 +42,7 @@ const icons = {
   right: ChevronRight,
   copy: Copy,
   close: X,
+  markdown: FilePenLine,
 };
 
 export function icon(name, size = 16) {

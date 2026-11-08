@@ -12,9 +12,12 @@ export class SessionAutosave {
   }
 
   schedule(summary, document, images = []) {
+    // Strings are immutable. Keep the potentially large Markdown source shared while
+    // still snapshotting every mutable metadata/options object for queued writes.
+    const { source, ...metadata } = document;
     this.pending.set(summary.id, {
       summary: structuredClone(summary),
-      document: structuredClone(document),
+      document: { ...structuredClone(metadata), source },
       images: structuredClone(images),
       revision: ++this.revision,
     });

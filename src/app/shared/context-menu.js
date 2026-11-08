@@ -1,4 +1,5 @@
 import { element, button } from './dom.js';
+import { animateEnter, animateExit } from './motion.js';
 
 let dismissCurrent = null;
 
@@ -14,7 +15,10 @@ export function openContextMenu(event, items, trigger) {
   const close = (restore = true) => {
     if (closed) return;
     closed = true;
-    menu.remove();
+    menu.inert = true;
+    menu.setAttribute('aria-hidden', 'true');
+    menu.style.pointerEvents = 'none';
+    void animateExit(menu).then(() => menu.remove());
     document.removeEventListener('pointerdown', outside, true);
     window.removeEventListener('resize', dismiss);
     window.removeEventListener('scroll', dismiss, true);
@@ -64,6 +68,7 @@ export function openContextMenu(event, items, trigger) {
   const y = event.type === 'contextmenu' && event.clientY ? event.clientY : bounds.bottom;
   menu.style.left = `${Math.max(8, Math.min(x, innerWidth - menu.offsetWidth - 8))}px`;
   menu.style.top = `${Math.max(8, Math.min(y, innerHeight - menu.offsetHeight - 8))}px`;
+  void animateEnter(menu);
   menu.querySelector('button:not(:disabled)')?.focus();
   document.addEventListener('pointerdown', outside, true);
   window.addEventListener('resize', dismiss);

@@ -13,6 +13,8 @@
 @import './app/output-analyzer/components/json-tree.css';
 @import './app/output-analyzer/components/analyzer-layout.css';
 @import './app/output-analyzer/components/table-search.css';
+@import './app/markdown-editor/components/markdown-editor.css';
+@import './app/shared/motion.css';
 
 [hidden] {
   display: none !important;

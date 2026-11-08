@@ -1,7 +1,7 @@
 import { validateBackupImages } from './backup-images.js';
 import { validateDocumentOptions } from './validate-document-options.js';
 
-const toolIds = new Set(['sql-formatter', 'output-analyzer']);
+const toolIds = new Set(['sql-formatter', 'output-analyzer', 'markdown-editor']);
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const time = (value) => Number.isFinite(value) && value >= 0;
 
@@ -84,7 +84,11 @@ export function readWorkspaceBackup(text) {
     order.some((id) => !openIds.includes(id)) ||
     (activeId !== null && !order.includes(activeId)) ||
     !record(counters) ||
-    [...toolIds].some((id) => !Number.isSafeInteger(counters[id]) || counters[id] < 0)
+    [...toolIds].some((id) =>
+      id === 'markdown-editor' && counters[id] === undefined
+        ? false
+        : !Number.isSafeInteger(counters[id]) || counters[id] < 0,
+    )
   )
     invalid();
   if (

@@ -1,7 +1,7 @@
 export function normalizeBaseName(value) {
   return value
     .trim()
-    .replace(/\.(?:sql|xlsx|txt)$/i, '')
+    .replace(/\.(?:sql|xlsx|txt|md|markdown)$/i, '')
     .trim();
 }
 

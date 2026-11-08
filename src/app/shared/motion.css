@@ -1,0 +1,70 @@
+:root {
+  --motion-fast: 120ms;
+  --motion-normal: 160ms;
+  --motion-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+button,
+.tool-link,
+.tab-shell,
+.sheet-tabs [role='tab'] {
+  transition:
+    background-color var(--motion-fast) var(--motion-ease),
+    border-color var(--motion-fast) var(--motion-ease),
+    color var(--motion-fast) var(--motion-ease);
+}
+.workspace {
+  transition: grid-template-columns var(--motion-normal) var(--motion-ease);
+}
+.sidebar .tool-label,
+.sidebar .brand-name {
+  transition: opacity var(--motion-fast) var(--motion-ease);
+}
+.md-find-widget button[aria-label='Toggle Replace'] {
+  transition: transform var(--motion-fast) var(--motion-ease);
+}
+.app-dialog[open]::backdrop {
+  animation: dialog-backdrop-in var(--motion-normal) var(--motion-ease) both;
+}
+.app-dialog.is-closing::backdrop {
+  animation: dialog-backdrop-out var(--motion-fast) var(--motion-ease) both;
+}
+.is-closing {
+  pointer-events: none;
+}
+.motion-panel-stage {
+  position: relative;
+}
+.motion-panel-ghost {
+  pointer-events: none !important;
+  overflow: hidden !important;
+}
+.is-resizing,
+.is-resizing * {
+  transition: none !important;
+}
+@keyframes dialog-backdrop-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes dialog-backdrop-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-delay: 0ms !important;
+    animation-iteration-count: 1 !important;
+    transition-delay: 0ms !important;
+    scroll-behavior: auto !important;
+  }
+}
