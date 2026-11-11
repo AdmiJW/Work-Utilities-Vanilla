@@ -159,6 +159,29 @@ SELECT Id, Name FROM dbo.Customers WHERE Active = 1;
 SELECT Id, Name FROM dbo.Customers WHERE Active = 1;
 ```
 
+
+## C#
+
+```cs
+public sealed class Note
+{
+    public string Title { get; init; } = "Offline";
+}
+```
+
+Aliases: `csharp` and `c#`.
+
+## Bash
+
+```bash
+#!/usr/bin/env bash
+for file in *.md; do
+    printf "%s\n" "$file"
+done
+```
+
+Aliases: `sh` and `shell`.
+
 ## Plain fallback
 
 ```unknown-language
@@ -171,7 +194,7 @@ Unlabelled plain code
 ```
 # Visual tables
 
-Click formatted text to place the caret. Try Up/Down through wrapped lines and rows, Tab/Shift+Tab, Enter, Escape, alignment controls, structural edits, and undo. Navigation alone must not rewrite source.
+Click formatted text to place the caret. Try Up/Down through wrapped lines and rows, Tab/Shift+Tab, Enter, Escape, right-click cell controls (or Shift+F10), structural edits, and undo. Tab selects the entire next cell; Left/Right collapse its selection. Columns size automatically and paragraphs immediately below the table remain outside it. Navigation alone must not rewrite source.
 
 | Left | Center | Right |
 | :--- | :---: | ---: |
@@ -202,7 +225,7 @@ Click formatted text to place the caret. Try Up/Down through wrapped lines and r
   | Listed | Nested table |
 # Offline links, images, and literal content
 
-Inspect all supported links and embedded images. Remote, relative, invalid images remain placeholders without network requests. HTML and unsupported extensions remain literal.
+Inspect all supported links and embedded images. Remote, relative, invalid images remain placeholders without network requests. Static HTML is rendered below; edit it in Source. Unsupported extensions remain literal.
 
 [HTTPS](https://example.com) ? [HTTP](http://example.com) ? [Email](mailto:hello@example.com)
 
@@ -231,6 +254,8 @@ Inspect all supported links and embedded images. Remote, relative, invalid image
 
 <script>window.thisMustNeverExecute = true;</script>
 
-<div>Raw HTML stays literal.</div>
+<div style="padding: 12px; border: 1px solid #789; color: #467"><p>Static HTML with <strong>nested content</strong>. Delete this entire root in Live Preview, or edit it in Source.</p><details><summary>Expand details</summary><p>No scripts or external resources are needed.</p></details></div>
+
+<table><tr><th>HTML table</th><th>Source edits only</th></tr><tr><td>Static content</td><td>Markdown table menus do not apply here.</td></tr></table>
 
 Math is outside this version: $a^2 + b^2$. Wiki links remain literal: [[A note]].

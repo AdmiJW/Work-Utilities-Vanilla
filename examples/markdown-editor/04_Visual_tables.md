@@ -1,6 +1,6 @@
 # Visual tables
 
-Click formatted text to place the caret. Try Up/Down through wrapped lines and rows, Tab/Shift+Tab, Enter, Escape, alignment controls, structural edits, and undo. Navigation alone must not rewrite source.
+Click formatted text to place the caret. Try Up/Down through wrapped lines and rows, Tab/Shift+Tab, Enter, Escape, right-click cell controls (or Shift+F10), structural edits, and undo. Tab selects the entire next cell; Left/Right collapse its selection. Columns size automatically and paragraphs immediately below the table remain outside it. Navigation alone must not rewrite source.
 
 ## Cell line breaks and boundaries
 

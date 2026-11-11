@@ -209,6 +209,9 @@ input[aria-invalid='true'] {
   .header-status {
     gap: 8px;
   }
+  .header-status .save-status {
+    max-width: 160px;
+  }
 }
 @media (max-width: 760px) {
   .workspace:not(.sidebar-collapsed) {
@@ -232,4 +235,27 @@ input[aria-invalid='true'] {
   .toolbar-actions {
     gap: 4px;
   }
+}
+.storage-control {
+  display: flex;
+  gap: 2px;
+  white-space: nowrap;
+}
+.storage-control button {
+  font-size: 11px;
+  padding: 4px 7px;
+}
+.storage-control button[aria-pressed='true'] {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: var(--accent);
+}
+.storage-notice {
+  flex-wrap: wrap;
+}
+.save-status {
+  max-width: 280px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

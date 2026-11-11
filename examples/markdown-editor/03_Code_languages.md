@@ -94,6 +94,29 @@ SELECT Id, Name FROM dbo.Customers WHERE Active = 1;
 SELECT Id, Name FROM dbo.Customers WHERE Active = 1;
 ```
 
+
+## C#
+
+```cs
+public sealed class Note
+{
+    public string Title { get; init; } = "Offline";
+}
+```
+
+Aliases: `csharp` and `c#`.
+
+## Bash
+
+```bash
+#!/usr/bin/env bash
+for file in *.md; do
+    printf "%s\n" "$file"
+done
+```
+
+Aliases: `sh` and `shell`.
+
 ## Plain fallback
 
 ```unknown-language

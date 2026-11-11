@@ -152,7 +152,7 @@ test('Markdown list guards enforce the agreed examples and atomic selections in 
   await expect(outer(page)).not.toBeFocused();
 });
 
-test('cell arrows and Tab use collapsed carets and row-major boundaries without source edits', async ({
+test('cell arrows use carets and Tab selects destination cells without source edits', async ({
   page,
 }) => {
   const original =
@@ -171,6 +171,13 @@ test('cell arrows and Tab use collapsed carets and row-major boundaries without 
     5,
   );
   await page.keyboard.press('Tab');
+  expect(
+    await cell(page, 2, 2).evaluate((dom) => {
+      const view = dom.cmTile.root.view,
+        range = view.state.selection.main;
+      return view.state.sliceDoc(range.from, range.to);
+    }),
+  ).toBe('beta');
   await select(cell(page, 2, 2), 4);
   await page.keyboard.press('ArrowRight');
   await expect(cell(page, 3, 1)).toBeFocused();

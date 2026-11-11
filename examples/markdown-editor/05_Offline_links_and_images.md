@@ -1,6 +1,6 @@
 # Offline links, images, and literal content
 
-Inspect all supported links and embedded images. Remote, relative, invalid images remain placeholders without network requests. HTML and unsupported extensions remain literal.
+Inspect all supported links and embedded images. Remote, relative, invalid images remain placeholders without network requests. Static HTML is rendered below; edit it in Source. Unsupported extensions remain literal.
 
 [HTTPS](https://example.com) ? [HTTP](http://example.com) ? [Email](mailto:hello@example.com)
 
@@ -29,6 +29,8 @@ Inspect all supported links and embedded images. Remote, relative, invalid image
 
 <script>window.thisMustNeverExecute = true;</script>
 
-<div>Raw HTML stays literal.</div>
+<div style="padding: 12px; border: 1px solid #789; color: #467"><p>Static HTML with <strong>nested content</strong>. Delete this entire root in Live Preview, or edit it in Source.</p><details><summary>Expand details</summary><p>No scripts or external resources are needed.</p></details></div>
+
+<table><tr><th>HTML table</th><th>Source edits only</th></tr><tr><td>Static content</td><td>Markdown table menus do not apply here.</td></tr></table>
 
 Math is outside this version: $a^2 + b^2$. Wiki links remain literal: [[A note]].

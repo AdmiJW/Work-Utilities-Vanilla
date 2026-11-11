@@ -1,6 +1,7 @@
-import { createWorkspaceBackup, readWorkspaceBackup } from '../functions/workspace-backup.js';
-import { exportBackupImages, restoreBackupImages } from '../functions/backup-images.js';
+import { readWorkspaceBackup } from '../functions/workspace-backup.js';
+import { restoreBackupImages } from '../functions/backup-images.js';
 import { validateImageBlob } from '../../shared/image-data.js';
+import { snapshotWorkspace } from './workspace-snapshot.js';
 
 export class WorkspaceBackups {
   constructor(state) {
@@ -16,26 +17,7 @@ export class WorkspaceBackups {
     try {
       // A failed autosave must not prevent recovery of the in-memory source.
       await state.autosave.flush();
-      const summaries = structuredClone(state.summaries);
-      const workspace = state.workspace();
-      const appearance = structuredClone(state.appearance);
-      const documents = await Promise.all(
-        summaries.map(async ({ id }) => {
-          const document = state.document(id) ?? (await state.repository.read(id));
-          if (!document)
-            throw new Error(
-              'One saved session could not be read. Reopen or recover it before exporting the whole workspace.',
-            );
-          return structuredClone(document);
-        }),
-      );
-      return createWorkspaceBackup(
-        summaries,
-        documents,
-        workspace,
-        appearance,
-        await exportBackupImages(state, documents),
-      );
+      return await snapshotWorkspace(state);
     } finally {
       state.busy = false;
       state.notify();
@@ -60,19 +42,8 @@ export class WorkspaceBackups {
       await state.preferenceQueue;
       await state.repository.replaceWorkspace(validated);
       await state.autosave.discard(state.summaries.map((item) => item.id));
-      state.images.cache.clear();
-      state.documents = new Map(
-        validated.documents.map((document) => [document.id, structuredClone(document)]),
-      );
-      state.summaries = structuredClone(validated.summaries);
-      state.order = [...validated.workspace.order];
-      state.counters = { 'markdown-editor': 0, ...validated.workspace.counters };
-      state.appearance = structuredClone(validated.appearance);
-      state.activeId = null;
-      state.generation++;
-      state.error = '';
+      state.adoptWorkspace(validated);
       state.busy = false;
-      if (validated.workspace.activeId) await state.activate(validated.workspace.activeId);
       state.notify();
       return true;
     } catch (error) {

@@ -34,7 +34,9 @@ test('failed permanent deletion retains pending SQL and screenshots through a la
     .getByRole('dialog', { name: 'Delete saved sessions?', exact: true })
     .getByRole('button', { name: 'Delete sessions', exact: true })
     .click();
-  await expect(page.locator('.main-workspace > .notice.error')).toContainText('Deletion denied');
+  await expect(page.locator('.main-workspace > .notice.error:not(.storage-notice)')).toContainText(
+    'Deletion denied',
+  );
   await expect(page.locator('.workspace')).toHaveAttribute('aria-busy', 'false');
   await library.getByRole('button', { name: 'Close session library', exact: true }).click();
   await page.getByRole('button', { name: 'Dismiss', exact: true }).click();

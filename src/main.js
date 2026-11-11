@@ -1,4 +1,9 @@
-import { SessionRepository, SessionState, WorkspaceLock } from './app/sessions/public-api.js';
+import {
+  WorkspaceRepository,
+  WorkspacePersistence,
+  SessionState,
+  WorkspaceLock,
+} from './app/sessions/public-api.js';
 import { mountWorkspace } from './app/workspace/public-api.js';
 import { element, button } from './app/shared/dom.js';
 
@@ -9,8 +14,9 @@ globalThis.__WORK_UTILITIES_WORKERS__ = JSON.parse(
   document.querySelector('#worker-data').textContent,
 );
 const lock = new WorkspaceLock();
-const repository = new SessionRepository();
+const repository = new WorkspaceRepository();
 const state = new SessionState(repository);
+const persistence = new WorkspacePersistence(state, repository);
 let started = false;
 
 async function start() {
@@ -50,11 +56,17 @@ async function start() {
 }
 
 document.addEventListener('visibilitychange', () => {
-  if (document.visibilityState === 'hidden') void state.autosave.flush();
+  if (document.visibilityState === 'hidden') void persistence.flush();
 });
 window.addEventListener('pagehide', () => {
-  void state.autosave.flush();
+  void persistence.flush();
   lock.release?.();
+});
+window.addEventListener('beforeunload', (event) => {
+  if (persistence.dirty) {
+    event.preventDefault();
+    event.returnValue = '';
+  }
 });
 window.addEventListener('error', (event) =>
   state.fail(

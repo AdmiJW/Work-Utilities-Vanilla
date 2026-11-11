@@ -22,6 +22,16 @@ export function openCompatibility(state) {
         ? 'unavailable'
         : 'available',
     );
+    if (state.persistence?.mode === 'file')
+      set(
+        storage,
+        state.persistence.needsReconnect
+          ? 'File · reconnect required'
+          : state.persistence.error
+            ? 'File · save failed'
+            : 'File · available',
+        state.persistence.error || state.persistence.needsReconnect ? 'unavailable' : 'available',
+      );
     const mode = backgroundStatus.value.mode;
     set(
       background,
@@ -48,6 +58,15 @@ export function openCompatibility(state) {
       element('dd', {}, storage),
       element('dt', {}, 'Background'),
       element('dd', {}, background),
+      element('dt', {}, 'File persistence'),
+      element(
+        'dd',
+        {},
+        typeof globalThis.showOpenFilePicker === 'function' &&
+          typeof globalThis.showSaveFilePicker === 'function'
+          ? 'Available · browser or enterprise permissions may require approval'
+          : 'Unavailable · use workspace import/export',
+      ),
     ),
     [{ label: 'Done', action: (close) => close() }],
   );

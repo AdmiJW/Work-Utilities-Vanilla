@@ -7,7 +7,12 @@ import {
   isolateHistory,
   invertedEffects,
 } from '@codemirror/commands';
-import { syntaxHighlighting, HighlightStyle, indentUnit } from '@codemirror/language';
+import {
+  syntaxHighlighting,
+  HighlightStyle,
+  indentUnit,
+  StreamLanguage,
+} from '@codemirror/language';
 import { tags } from '@lezer/highlight';
 import { searchKeymap, closeSearchPanel } from '@codemirror/search';
 import { markdown, commonmarkLanguage, markdownKeymap } from '@codemirror/lang-markdown';
@@ -18,6 +23,11 @@ import { json } from '@codemirror/lang-json';
 import { python } from '@codemirror/lang-python';
 import { html } from '@codemirror/lang-html';
 import { css } from '@codemirror/lang-css';
+import { csharp } from '@codemirror/legacy-modes/mode/clike';
+import { shell } from '@codemirror/legacy-modes/mode/shell';
+import { inlineFormat } from '../functions/inline-format.js';
+import { liveEditing, allowHTML } from './live-editing.js';
+import { createMarkdownOutline } from '../components/markdown-outline.js';
 import { element, button } from '../../shared/dom.js';
 import { normalize, tableCell } from '../functions/markdown.js';
 import { readEmbeddedImage } from '../functions/images.js';
@@ -43,6 +53,8 @@ const languages = {
   python: python(),
   html: html(),
   css: css(),
+  csharp: { language: StreamLanguage.define(csharp) },
+  bash: { language: StreamLanguage.define(shell) },
 };
 const aliases = {
   js: 'javascript',
@@ -53,6 +65,10 @@ const aliases = {
   htm: 'html',
   tsql: 'sql',
   mssql: 'sql',
+  cs: 'csharp',
+  'c#': 'csharp',
+  sh: 'bash',
+  shell: 'bash',
 };
 const highlight = HighlightStyle.define([
   { tag: tags.keyword, color: 'var(--accent)' },
@@ -81,6 +97,19 @@ export function createMarkdownEditor(host, source, options, callbacks) {
     activeTable: null,
     tables: new Set(),
     source,
+    lineNumbers: options.lineNumbers !== false,
+    paragraphAfter: (end) => {
+      const view = owner.outer,
+        doc = view.state.doc;
+      const after = doc.sliceString(end);
+      const missing = after.startsWith('\n\n') ? '' : after.startsWith('\n') ? '\n' : '\n\n';
+      view.dispatch({
+        changes: missing ? { from: end, insert: missing } : undefined,
+        selection: { anchor: end + 2 },
+        scrollIntoView: true,
+      });
+      view.focus();
+    },
     pruneImages: (urls) => {
       for (const url of imageCache.keys()) if (!urls.has(url)) imageCache.delete(url);
     },
@@ -156,7 +185,7 @@ export function createMarkdownEditor(host, source, options, callbacks) {
   const config = () => [
     EditorState.readOnly.of(owner.mode === 'reading'),
     EditorView.editable.of(owner.mode !== 'reading'),
-    owner.mode === 'source' ? lineNumbers() : [],
+    owner.mode !== 'reading' && owner.lineNumbers ? lineNumbers() : [],
     EditorView.contentAttributes.of({
       'aria-label': owner.mode === 'reading' ? 'Markdown reading view' : 'Markdown editor',
       spellcheck: owner.mode === 'source' ? 'false' : 'true',
@@ -213,6 +242,7 @@ export function createMarkdownEditor(host, source, options, callbacks) {
         modeConfig.of(config()),
         appearance.of(EditorView.theme({}, { dark: owner.dark })),
         preview,
+        liveEditing(owner),
         find.extension,
         keymap.of([
           { key: 'Tab', run: (view) => indent(view, false), shift: (view) => indent(view, true) },
@@ -266,6 +296,7 @@ export function createMarkdownEditor(host, source, options, callbacks) {
             owner.source = update.state.doc.toString().replaceAll('\n', update.state.field(ending));
             callbacks.changed(owner.source);
           }
+          if (update.docChanged) outline?.update();
           if (update.selectionSet)
             callbacks.viewChanged({
               selection: {
@@ -277,6 +308,8 @@ export function createMarkdownEditor(host, source, options, callbacks) {
       ],
     }),
   });
+  const outline = createMarkdownOutline(owner, host, () => callbacks.viewChanged({ toc: false }));
+  outline.setEnabled(!!options.toc);
   owner.outer.scrollDOM.scrollTop = options.scrollTop ?? 0;
   function indent(view, outdent) {
     if (view.state.readOnly || view.composing || view.compositionStarted) return false;
@@ -287,7 +320,10 @@ export function createMarkdownEditor(host, source, options, callbacks) {
     }
     return applyIndentation(view, outdent, result.changes);
   }
-  const scroll = () => callbacks.viewChanged({ scrollTop: owner.outer.scrollDOM.scrollTop });
+  const scroll = () => {
+    outline.update();
+    callbacks.viewChanged({ scrollTop: owner.outer.scrollDOM.scrollTop });
+  };
   owner.outer.scrollDOM.addEventListener('scroll', scroll);
 
   function format(command, value) {
@@ -297,33 +333,16 @@ export function createMarkdownEditor(host, source, options, callbacks) {
       return false;
     const { from, to } = view.state.selection.main,
       selected = view.state.sliceDoc(from, to);
-    const pairs = {
-      bold: ['**', '**', 'bold'],
-      italic: ['*', '*', 'italic'],
-      strike: ['~~', '~~', 'text'],
-      code: ['`', '`', 'code'],
-      link: ['[', `](${value ?? 'https://example.com'})`, 'link'],
-    };
     let changes, selection;
-    if (pairs[command]) {
-      const [before, after, placeholder] = pairs[command],
-        text = selected || placeholder;
-      if (
-        selected.startsWith(before) &&
-        selected.endsWith(after) &&
-        selected.length >= before.length + after.length &&
-        command !== 'link'
-      ) {
-        const insert = selected.slice(before.length, -after.length);
-        changes = { from, to, insert };
-        selection = { anchor: from, head: from + insert.length };
-      } else {
-        changes = { from, to, insert: before + text + after };
-        selection = { anchor: from + before.length, head: from + before.length + text.length };
-      }
+    const inline = inlineFormat(view.state, command);
+    if (inline) ({ changes, selection } = inline);
+    else if (command === 'link') {
+      const text = selected || 'link';
+      changes = { from, to, insert: '[' + text + '](' + (value ?? 'https://example.com') + ')' };
+      selection = { anchor: from + 1, head: from + 1 + text.length };
     } else if (command === 'table' || command === 'fence' || command === 'divider') {
       const insert = {
-        table: '\n| Column 1 | Column 2 |\n| --- | --- |\n|  |  |\n',
+        table: '\n\n| Column 1 | Column 2 |\n| --- | --- |\n|  |  |\n\n',
         fence: `\n\`\`\`\n${selected}\n\`\`\`\n`,
         divider: '\n\n---\n\n',
       }[command];
@@ -422,7 +441,7 @@ export function createMarkdownEditor(host, source, options, callbacks) {
       owner.outer.dispatch({
         changes: { from: range.from, to: range.to, insert: normalize(value) },
         selection: { anchor: range.from + normalize(value).length },
-        annotations: isolateHistory.of('full'),
+        annotations: [isolateHistory.of('full'), allowHTML.of(true)],
         scrollIntoView: true,
         userEvent: 'input',
       });
@@ -450,6 +469,13 @@ export function createMarkdownEditor(host, source, options, callbacks) {
         annotations: Transaction.addToHistory.of(false),
       });
     },
+    setViewOptions(options) {
+      if (owner.lineNumbers !== (options.lineNumbers !== false)) {
+        owner.lineNumbers = options.lineNumbers !== false;
+        owner.outer.dispatch({ effects: modeConfig.reconfigure(config()) });
+      }
+      outline.setEnabled(!!options.toc);
+    },
     setTheme(dark) {
       if (dark === owner.dark) return;
       owner.dark = dark;
@@ -467,6 +493,7 @@ export function createMarkdownEditor(host, source, options, callbacks) {
       for (const mark of bookmarks) mark.valid = false;
       bookmarks.clear();
       find.dispose();
+      outline.dispose();
       owner.outer.scrollDOM.removeEventListener('scroll', scroll);
       owner.outer.destroy();
       imageCache.clear();

@@ -6,6 +6,8 @@ export function validateDocumentOptions(document, invalid) {
   if (options.mode !== undefined && !['live', 'source', 'reading'].includes(options.mode))
     invalid();
   if (options.wide !== undefined && typeof options.wide !== 'boolean') invalid();
+  for (const key of ['lineNumbers', 'toc'])
+    if (options[key] !== undefined && typeof options[key] !== 'boolean') invalid();
   for (const key of ['sheetNames', 'tableSearches']) {
     if (options[key] === undefined) continue;
     if (

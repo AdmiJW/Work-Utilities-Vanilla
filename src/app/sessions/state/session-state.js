@@ -55,6 +55,11 @@ export class SessionState extends EventTarget {
 
   async initialize() {
     await this.repository.initialize();
+    if (await this.persistence?.restoreConnection()) {
+      this.ready = true;
+      this.notify();
+      return;
+    }
     await this.load();
     this.ready = true;
     this.notify();
@@ -83,6 +88,20 @@ export class SessionState extends EventTarget {
     this.navigation++;
     this.openingId = null;
     this.openingError = '';
+  }
+
+  adoptWorkspace(backup) {
+    this.cancelNavigation();
+    this.documents = new Map(structuredClone(backup.documents).map((doc) => [doc.id, doc]));
+    this.summaries = structuredClone(backup.summaries);
+    this.order = [...backup.workspace.order];
+    this.counters = { 'markdown-editor': 0, ...backup.workspace.counters };
+    this.appearance = structuredClone(backup.appearance);
+    this.activeId = backup.workspace.activeId;
+    this.images.cache.clear();
+    this.error = '';
+    this.openingError = '';
+    this.generation++;
   }
 
   create(toolId, name, source = '', initial = {}) {
@@ -127,8 +146,12 @@ export class SessionState extends EventTarget {
       if (!summary.isOpen) this.order = [...this.order.filter((item) => item !== id), id];
       this.activeId = id;
       this.persistWorkspace();
-      if (recordView || !summary.isOpen)
-        void this.repository.recordAccess(id, lastViewedAt).catch((error) => this.fail(error));
+      if (recordView || !summary.isOpen) {
+        const access = this.repository.recordAccess(id, lastViewedAt);
+        this.preferenceQueue = Promise.all([this.preferenceQueue, access])
+          .then(() => {})
+          .catch((error) => this.fail(error));
+      }
       return true;
     } catch (error) {
       if (request === this.navigation)
@@ -237,6 +260,12 @@ export class SessionState extends EventTarget {
 
   saveActive(extraSessionId) {
     if (this.busy || this.openingId) return Promise.resolve({ status: 'busy', ids: [] });
+    if (this.persistence?.mode === 'file')
+      return this.persistence.flush().then((success) => ({
+        status: success ? 'saved' : 'error',
+        ids: [],
+        error: this.persistence.error,
+      }));
     const ids = [
       ...new Set(
         [this.activeId, extraSessionId].filter(
@@ -293,8 +322,10 @@ export class SessionState extends EventTarget {
   setAppearance(changes) {
     if (this.busy) return;
     this.appearance = { ...this.appearance, ...changes };
-    void this.repository
-      .setPreference('appearance', this.appearance)
+    const snapshot = structuredClone(this.appearance),
+      repository = this.repository;
+    this.preferenceQueue = this.preferenceQueue
+      .then(() => repository.setPreference('appearance', snapshot))
       .catch((error) => this.fail(error));
     this.notify();
   }

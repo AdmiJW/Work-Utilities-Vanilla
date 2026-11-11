@@ -3,13 +3,13 @@ import { animateEnter, animateExit } from './motion.js';
 
 let dismissCurrent = null;
 
-export function openContextMenu(event, items, trigger) {
+export function openContextMenu(event, items, trigger, label = 'Tab actions') {
   dismissCurrent?.();
   event.preventDefault();
   const menu = element('div', {
     className: 'context-menu',
     role: 'menu',
-    'aria-label': 'Tab actions',
+    'aria-label': label,
   });
   let closed = false;
   const close = (restore = true) => {

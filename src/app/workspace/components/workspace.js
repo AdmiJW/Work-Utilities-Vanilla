@@ -14,6 +14,7 @@ import { openSessionLibrary } from './session-library.js';
 import { openDebugDialog } from './debug-dialog.js';
 import { installManualSave } from './manual-save.js';
 import { animateEnter, cancelMotion } from '../../shared/motion.js';
+import { createWorkspaceStorage } from './workspace-storage.js';
 
 export function mountWorkspace(root, state, lock) {
   const views = new Map();
@@ -25,6 +26,7 @@ export function mountWorkspace(root, state, lock) {
     if (!library?.open) library = openSessionLibrary(state);
   };
   const { backup, restore } = createWorkspaceBackupActions(state);
+  const storage = createWorkspaceStorage(state, backup);
   const sidebar = createWorkspaceSidebar(state, openLibrary);
   const breadcrumb = element('strong');
   const saveStatus = element('span', { className: 'save-status', role: 'status' });
@@ -52,6 +54,7 @@ export function mountWorkspace(root, state, lock) {
     element(
       'div',
       { className: 'header-status' },
+      storage.element,
       saveStatus,
       element(
         'span',
@@ -93,6 +96,7 @@ export function mountWorkspace(root, state, lock) {
     header,
     manualFeedback,
     notice,
+    storage.notice,
     memoryNotice,
     tabs.element,
     panel,
@@ -128,6 +132,10 @@ export function mountWorkspace(root, state, lock) {
     );
     clear(theme, icon(state.appearance.theme === 'dark' ? 'sun' : 'moon'));
     sidebar.update();
+    storage.update();
+    sidebar.element.inert = state.persistence.needsReconnect;
+    tabs.element.inert = state.persistence.needsReconnect;
+    footer.inert = state.persistence.needsReconnect;
     breadcrumb.textContent = state.activeSession ? `› ${state.activeSession.name}` : '';
     saveStatus.textContent = !state.repository.persistent
       ? 'Memory only'
@@ -137,13 +145,21 @@ export function mountWorkspace(root, state, lock) {
           ? 'Saving…'
           : 'Save failed';
     saveStatus.classList.toggle('failed', state.autosave.status === 'error');
-    const error = state.error || state.autosave.error || (state.activeId ? state.openingError : '');
+    if (state.persistence.mode === 'file') {
+      saveStatus.textContent = `${state.persistence.filename} · ${{ saved: 'All changes saved', unsaved: 'Unsaved changes', saving: 'Saving…', error: 'Save failed', reconnect: 'Reconnect required' }[state.persistence.status]}`;
+      saveStatus.classList.toggle('failed', !!state.persistence.error);
+    }
+    saveStatus.title = saveStatus.textContent;
+    const error =
+      state.error ||
+      (state.persistence.mode === 'browser' ? state.autosave.error : '') ||
+      (state.activeId ? state.openingError : '');
     notice.hidden = !error;
     if (error)
       clear(
         notice,
         element('span', {}, error),
-        button('Retry save', () => state.autosave.flush()),
+        button('Retry save', () => state.persistence.flush()),
         button('Dismiss', () => {
           state.error = '';
           state.openingError = '';
@@ -177,7 +193,7 @@ export function mountWorkspace(root, state, lock) {
         view.element.remove();
         views.delete(id);
       }
-    panel.inert = state.openingId !== null;
+    panel.inert = state.openingId !== null || state.persistence.needsReconnect;
     panel.setAttribute('aria-busy', String(state.openingId !== null));
     for (const [id, view] of views) {
       if (id !== state.activeId) {

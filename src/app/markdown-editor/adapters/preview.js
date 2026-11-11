@@ -6,6 +6,9 @@ import { linkParts, referenceKey, readTable, safeLink } from '../functions/markd
 import { TableWidget } from '../components/table-widget.js';
 import { ImageWidget } from '../components/image-widget.js';
 import { renderInline, markdownText } from '../components/inline-content.js';
+import { htmlRoots } from '../functions/html-roots.js';
+import { HTMLWidget } from '../components/html-widget.js';
+import { inlineSpanActive } from '../functions/inline-format.js';
 
 class CheckboxWidget extends WidgetType {
   constructor(owner, from, checked, reading) {
@@ -113,13 +116,25 @@ export function createPreviewField(owner) {
       atomic = [];
     const read = (from, to) => state.sliceDoc(from, to);
     const selection = state.selection.main;
+    const html = htmlRoots(state.doc);
+    for (const root of html) {
+      const range = Decoration.replace({
+        widget: new HTMLWidget(root, owner.mode === 'reading'),
+        block: root.block,
+      }).range(root.from, root.to);
+      // Markdown tables render their own inline HTML through their cell projections.
+      if ([...tables.values()].some((table) => root.from >= table.from && root.to <= table.to))
+        continue;
+      ranges.push(range);
+      atomic.push(range);
+    }
     const active = [];
     if (owner.mode === 'live') {
       active.push({
         from: state.doc.lineAt(selection.from).from,
         to: state.doc.lineAt(selection.to).to,
       });
-      for (const node of blocks)
+      for (const node of blocks.filter((node) => ['FencedCode', 'CodeBlock'].includes(node.name)))
         if (node.from <= selection.to && node.to >= selection.from)
           active.push({ from: state.doc.lineAt(node.from).from, to: state.doc.lineAt(node.to).to });
     }
@@ -134,10 +149,29 @@ export function createPreviewField(owner) {
     };
     for (const node of nodes) {
       const { from, to, name } = node;
+      if (html.some((root) => from >= root.from && to <= root.to)) continue;
       let container = node.parent;
       while (container && container.name !== 'Table') container = container.parent;
       if (container) continue;
-      const editingNode = editing(from, to);
+      const inline = [
+        'StrongEmphasis',
+        'Emphasis',
+        'Strikethrough',
+        'InlineCode',
+        'Link',
+        'Autolink',
+        'URL',
+      ].includes(name)
+        ? node
+        : ['EmphasisMark', 'StrikethroughMark', 'CodeMark'].includes(name) &&
+            ['StrongEmphasis', 'Emphasis', 'Strikethrough', 'InlineCode'].includes(
+              node.parent?.name,
+            )
+          ? node.parent
+          : null;
+      const editingNode = inline
+        ? inlineSpanActive(inline, selection, owner.mode === 'reading')
+        : editing(from, to);
       if (name === 'Table') {
         const model = tables.get(from);
         if (model) {

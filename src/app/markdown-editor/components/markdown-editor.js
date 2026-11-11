@@ -267,6 +267,17 @@ export function createMarkdownTool(state, id) {
     () => state.updateOptions(id, { wide: !state.document(id).options.wide }),
     { 'aria-pressed': false },
   );
+  const lineNumbers = button(
+    'Line numbers',
+    () =>
+      state.updateOptions(id, { lineNumbers: state.document(id).options.lineNumbers === false }),
+    { 'aria-pressed': true },
+  );
+  const toc = button(
+    'Table of contents',
+    () => state.updateOptions(id, { toc: !state.document(id).options.toc }),
+    { 'aria-pressed': false },
+  );
   const view = element(
     'section',
     { className: 'markdown-tool tool-view', 'aria-label': 'Markdown Editor' },
@@ -296,7 +307,7 @@ export function createMarkdownTool(state, id) {
       'div',
       { className: 'md-view-toolbar' },
       modes,
-      element('div', { className: 'toolbar-actions' }, wide, findButton),
+      element('div', { className: 'toolbar-actions' }, lineNumbers, toc, wide, findButton),
     ),
     formatBar,
     notice,
@@ -321,6 +332,10 @@ export function createMarkdownTool(state, id) {
     filename.update();
     view.classList.toggle('md-wide', !!doc.options.wide);
     wide.setAttribute('aria-pressed', String(!!doc.options.wide));
+    lineNumbers.setAttribute('aria-pressed', String(doc.options.lineNumbers !== false));
+    lineNumbers.hidden = mode === 'reading';
+    toc.setAttribute('aria-pressed', String(!!doc.options.toc));
+    editor.setViewOptions(doc.options);
     for (const control of modes.children)
       control.setAttribute(
         'aria-pressed',

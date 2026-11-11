@@ -1,6 +1,8 @@
 import { element } from '../../shared/dom.js';
 import { markdownParser, linkParts, safeLink } from '../functions/markdown.js';
 import { isCellBreak } from '../functions/cell-projection.js';
+import { readHTMLRoots } from '../functions/html-roots.js';
+import { createHTMLDOM } from './html-widget.js';
 
 export function markdownText(text) {
   return text
@@ -21,6 +23,7 @@ export function renderInline(text, references = new Map(), image = null, mapping
   const read = (from, to) => source.slice(from, to);
   const fragment = document.createDocumentFragment();
   const tree = markdownParser.parse(source);
+  const html = readHTMLRoots(source, true).filter((root) => !isCellBreak(root.raw));
   function append(host, raw, from, literal = false) {
     const node = document.createTextNode(literal ? raw : plain(raw));
     mapping?.text.set(node, { raw, from: from - 2, literal });
@@ -30,8 +33,16 @@ export function renderInline(text, references = new Map(), image = null, mapping
     let position = start;
     for (let c = node.firstChild; c; c = c.nextSibling) {
       if (c.to <= start || c.from >= end) continue;
+      if (c.to <= position) continue;
       if (c.from > position) append(host, read(position, c.from), position);
-      if (['EmphasisMark', 'StrikethroughMark', 'CodeMark'].includes(c.name)) {
+      const root = html.find((root) => root.from === c.from);
+      if (root) {
+        const object = createHTMLDOM(root.raw, false, !mapping);
+        mapping?.objects.set(object, { from: root.from - 2, to: root.to - 2 });
+        host.append(object);
+        position = root.to;
+        continue;
+      } else if (['EmphasisMark', 'StrikethroughMark', 'CodeMark'].includes(c.name)) {
         /* hidden delimiter */
       } else if (['StrongEmphasis', 'Emphasis', 'Strikethrough', 'InlineCode'].includes(c.name)) {
         const tag = {

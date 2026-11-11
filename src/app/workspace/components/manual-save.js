@@ -24,7 +24,10 @@ export function installManualSave(state, feedback) {
       .filter(Boolean)
       .join(', ');
     const text = {
-      saved: `Saved ${names || 'current session'}`,
+      saved:
+        state.persistence?.mode === 'file'
+          ? `Saved workspace to ${state.persistence.filename}`
+          : `Saved ${names || 'current session'}`,
       'memory-only': 'Memory only — export a backup to keep this session.',
       error: result.error || 'Save failed. Retry save or export a backup.',
       busy: 'Wait for the current workspace operation to finish.',

@@ -33,6 +33,7 @@
 }
 .app-dialog > footer {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: 9px;
   padding: 16px 22px;

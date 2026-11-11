@@ -94,7 +94,10 @@ test('visual table cells retain focus, escape pipes and share undo with structur
   await expect(
     page.getByRole('textbox', { name: 'Table row 3 column 1', exact: true }),
   ).toBeFocused();
-  await page.getByRole('button', { name: 'Add column', exact: true }).click();
+  await table
+    .getByRole('cell', { name: 'Row 3, column 1', exact: true })
+    .click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Add column', exact: true }).click();
   await expect(table.getByRole('row').first().locator('th')).toHaveCount(3);
   await page.keyboard.press('ControlOrMeta+Z');
   await expect(table.getByRole('row').first().locator('th')).toHaveCount(2);

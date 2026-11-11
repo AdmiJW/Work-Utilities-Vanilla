@@ -369,7 +369,7 @@ for (const reducedMotion of ['no-preference', 'reduce'])
     await page.emulateMedia({ reducedMotion });
     await openApp(page);
     const animations = await page.evaluate(() => {
-      const trigger = document.querySelector('.header-status button:last-child');
+      const trigger = document.querySelector('.header-status > button:last-child');
       trigger.focus();
       trigger.click();
       const dialog = document.querySelector('dialog');

@@ -9,7 +9,8 @@ import { EditorView, WidgetType, Decoration, keymap, drawSelection } from '@code
 import { defaultKeymap, undo, redo, isolateHistory } from '@codemirror/commands';
 import { markdown, commonmarkLanguage } from '@codemirror/lang-markdown';
 import { GFM } from '@lezer/markdown';
-import { element, button } from '../../shared/dom.js';
+import { element } from '../../shared/dom.js';
+import { openContextMenu } from '../../shared/context-menu.js';
 import {
   tableChange,
   tableCell,
@@ -22,6 +23,8 @@ import { ImageWidget } from './image-widget.js';
 import { createInlineSourceMap } from './inline-source-map.js';
 import { setCaret, visualEdge } from '../adapters/table-navigation.js';
 import { CellProjection, prepareCellEdit } from '../functions/cell-projection.js';
+import { cellPreview } from '../adapters/cell-preview.js';
+import { liveEditing, allowHTML } from '../adapters/live-editing.js';
 
 const controllers = new WeakMap();
 const rebaseImages = StateEffect.define();
@@ -48,22 +51,8 @@ class TableController {
     this.cells = [];
     this.rendered = new WeakMap();
     this.dom = element('div', { className: 'md-table-widget', contentEditable: 'false' });
-    this.tools = element('div', { className: 'md-table-tools', 'aria-label': 'Table controls' });
-    for (const [label, operation] of [
-      ['Add row', 'add-row'],
-      ['Remove row', 'remove-row'],
-      ['Add column', 'add-column'],
-      ['Remove column', 'remove-column'],
-      ['Align left', 'left'],
-      ['Align center', 'center'],
-      ['Align right', 'right'],
-    ]) {
-      const control = button(label, () => this.operation(operation), { 'aria-label': label });
-      control.addEventListener('mousedown', (e) => e.preventDefault());
-      this.tools.append(control);
-    }
     this.table = element('table', { 'aria-label': 'Markdown table' });
-    this.dom.append(this.tools, element('div', { className: 'md-table-scroll' }, this.table));
+    this.dom.append(element('div', { className: 'md-table-scroll' }, this.table));
     this.update(model, reading);
   }
 
@@ -71,7 +60,6 @@ class TableController {
     const previousModel = this.model;
     this.model = model;
     this.reading = reading;
-    this.tools.hidden = reading;
     if (this.cells.length !== model.rows.length || this.cells[0]?.length !== model.columns) {
       const previous = this.active && { row: this.active.row, column: this.active.column };
       this.stop();
@@ -105,11 +93,16 @@ class TableController {
             this.edit(r, c, { position });
           });
           td.addEventListener('keydown', (e) => {
+            if (!this.reading && (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10'))) {
+              this.menu(e, r, c);
+              return;
+            }
             if (e.target === td && !this.reading && (e.key === 'Enter' || e.key === 'F2')) {
               e.preventDefault();
               this.edit(r, c);
             }
           });
+          td.addEventListener('contextmenu', (event) => this.menu(event, r, c));
           tr.append(td);
           return td;
         });
@@ -227,6 +220,27 @@ class TableController {
     }
   }
 
+  menu(event, row, column) {
+    if (this.reading) return;
+    event.stopPropagation();
+    this.edit(row, column);
+    const trigger = this.active?.view.contentDOM ?? this.cells[row][column];
+    this.closeMenu = openContextMenu(
+      event,
+      [
+        ['Add row', 'add-row'],
+        ['Remove row', 'remove-row'],
+        ['Add column', 'add-column'],
+        ['Remove column', 'remove-column'],
+        ['Align left', 'left'],
+        ['Align center', 'center'],
+        ['Align right', 'right'],
+      ].map(([label, operation]) => ({ label, action: () => this.operation(operation) })),
+      trigger,
+      'Table actions',
+    );
+  }
+
   highlight(selection) {
     for (let r = 0; r < this.cells.length; r++)
       for (let c = 0; c < this.cells[r].length; c++) {
@@ -318,6 +332,8 @@ class TableController {
         extensions: [
           markdown({ base: commonmarkLanguage, extensions: [GFM], completeHTMLTags: false }),
           imageField,
+          cellPreview(),
+          liveEditing(this.owner, true, () => this.syncing),
           drawSelection(),
           EditorView.lineWrapping,
           EditorView.contentAttributes.of({
@@ -567,8 +583,7 @@ class TableController {
     this.stop();
     this.update(this.model, this.reading);
     if (focus) {
-      this.owner.outer.dispatch({ selection: { anchor: end } });
-      this.owner.outer.focus();
+      this.owner.paragraphAfter(end);
     }
   }
 
@@ -581,7 +596,7 @@ class TableController {
     const transaction = active.view.state.update({
       changes: { from, to, insert },
       selection: { anchor: from + insert.length },
-      annotations: isolateHistory.of('full'),
+      annotations: [isolateHistory.of('full'), allowHTML.of(true)],
       userEvent: 'input.paste',
     });
     if (!transaction.docChanged) return false;
@@ -625,6 +640,10 @@ class TableController {
       number += forward ? 1 : -1;
     }
     this.leave(false);
+    if (forward && position === doc.length) {
+      this.owner.paragraphAfter(this.model.to);
+      return;
+    }
     setCaret(outer, EditorSelection.cursor(position, forward ? 1 : -1));
     outer.focus();
   }
@@ -658,7 +677,12 @@ class TableController {
       queueMicrotask(() => this.edit(r, 0, { editorPosition: 0 }));
     } else
       this.edit(Math.floor(next / this.model.columns), next % this.model.columns, {
-        editorPosition: direction > 0 ? 0 : Infinity,
+        selection: {
+          anchor: 0,
+          head:
+            this.model.rows[Math.floor(next / this.model.columns)].cells[next % this.model.columns]
+              ?.value.length ?? 0,
+        },
       });
     return true;
   }
@@ -709,6 +733,7 @@ export class TableWidget extends WidgetType {
   }
   destroy(dom) {
     const controller = controllers.get(dom);
+    controller?.closeMenu?.(false);
     controller?.stop();
     if (controller) this.owner.tables.delete(controller);
   }

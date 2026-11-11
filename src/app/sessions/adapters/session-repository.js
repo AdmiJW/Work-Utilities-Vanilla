@@ -10,6 +10,7 @@ export class SessionRepository {
       .version(1)
       .stores({ summaries: 'id, toolId, updatedAt', documents: 'id', preferences: 'key' });
     this.database.version(2).stores({ sessionImages: 'id, sessionId' });
+    this.database.version(3).stores({ storageConnections: 'key' });
     this.summaries = this.database.table('summaries');
     this.documents = this.database.table('documents');
     this.preferences = this.database.table('preferences');
@@ -27,6 +28,16 @@ export class SessionRepository {
       this.storageError =
         'Browser storage is unavailable. This workspace is in memory only. Export a backup before closing.';
     }
+  }
+
+  async getConnection() {
+    return this.persistent
+      ? (await this.database.table('storageConnections').get('active'))?.value
+      : undefined;
+  }
+  async setConnection(value) {
+    if (this.persistent)
+      await this.database.table('storageConnections').put({ key: 'active', value });
   }
 
   async list() {

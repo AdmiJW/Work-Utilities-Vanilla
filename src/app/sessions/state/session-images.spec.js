@@ -212,6 +212,6 @@ describe('filenames and screenshots', () => {
     await state.activate('legacy');
     expect(state.fileName('legacy')).toBe('Old name');
     expect(state.document('legacy').source).toBe('SELECT 1;');
-    expect(repository.database.verno).toBe(2);
+    expect(repository.database.verno).toBe(3);
   });
 });

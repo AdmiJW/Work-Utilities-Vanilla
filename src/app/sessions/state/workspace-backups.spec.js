@@ -20,6 +20,30 @@ afterEach(async () => {
 });
 
 describe('workspace backup operations', () => {
+  it('keeps the workspace suspended until cold documents finish entering the snapshot', async () => {
+    const { state, repository, backups } = await workspace();
+    const id = await state.create('markdown-editor', 'Cold', 'keep');
+    await state.close(id);
+    let enter, release;
+    const entered = new Promise((resolve) => {
+      enter = resolve;
+    });
+    const wait = new Promise((resolve) => {
+      release = resolve;
+    });
+    const original = repository.read.bind(repository);
+    vi.spyOn(repository, 'read').mockImplementationOnce(async (...args) => {
+      enter();
+      await wait;
+      return original(...args);
+    });
+    const exporting = backups.export();
+    await entered;
+    expect(state.busy).toBe(true);
+    release();
+    expect((await exporting).documents[0].source).toBe('keep');
+    expect(state.busy).toBe(false);
+  });
   it('restores an older backup then creates and round-trips Markdown sessions', async () => {
     const { state, backups } = await workspace();
     await state.create('sql-formatter');

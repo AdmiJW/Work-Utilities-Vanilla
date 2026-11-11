@@ -4,3 +4,6 @@ export { WorkspaceBackups } from './state/workspace-backups.js';
 export { sessionRecency } from './functions/session-recency.js';
 export { WorkspaceLock } from './adapters/workspace-lock.js';
 export { createExportFilename } from './components/export-filename.js';
+export { WorkspaceRepository } from './adapters/workspace-repository.js';
+export { WorkspacePersistence } from './state/workspace-persistence.js';
+export { filePickersAvailable } from './adapters/file-connection.js';

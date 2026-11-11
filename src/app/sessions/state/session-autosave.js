@@ -23,13 +23,18 @@ export class SessionAutosave {
     });
     clearTimeout(this.timers.get(summary.id));
     this.status = 'saving';
+    if (this.repository.mode === 'file') {
+      this.repository.persistence.changed();
+      return;
+    }
     this.timers.set(
       summary.id,
       setTimeout(() => void this.flush(summary.id), 10_000),
     );
   }
 
-  async flush(id) {
+  async flush(id, staging = false) {
+    if (this.repository.mode === 'file' && !staging) return this.repository.persistence.flush();
     const ids = id ? [id] : [...new Set([...this.pending.keys(), ...this.queues.keys()])];
     const results = await Promise.all(
       ids.map(async (key) => {

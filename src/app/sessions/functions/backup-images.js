@@ -1,14 +1,20 @@
 import { decodeBase64, encodeBase64, identifyImage } from '../../shared/image-data.js';
+const encoded = new WeakMap();
 
 export async function exportBackupImages(state, documents) {
   const images = [];
   for (const document of documents) {
     for (const reference of document.unitTestImages ?? []) {
       const { blob } = await state.images.read(reference.id);
+      if (!encoded.has(blob))
+        encoded.set(
+          blob,
+          blob.arrayBuffer().then((buffer) => encodeBase64(new Uint8Array(buffer))),
+        );
       images.push({
         id: reference.id,
         sessionId: document.id,
-        data: encodeBase64(new Uint8Array(await blob.arrayBuffer())),
+        data: await encoded.get(blob),
       });
     }
   }

@@ -88,7 +88,12 @@ test('Debug embeds all examples, creates prepared independent sessions, and comp
   await page.getByRole('button', { name: 'Browser compatibility', exact: true }).click();
   const compatibility = page.getByRole('dialog', { name: 'Browser compatibility', exact: true });
   await expect(compatibility.locator('.status-chip.available')).toHaveCount(2);
-  await expect(compatibility.locator('dt')).toHaveText(['Application', 'Autosave', 'Background']);
+  await expect(compatibility.locator('dt')).toHaveText([
+    'Application',
+    'Autosave',
+    'Background',
+    'File persistence',
+  ]);
   await expect(
     compatibility.getByRole('button', { name: 'Test a download', exact: true }),
   ).toHaveCount(0);
