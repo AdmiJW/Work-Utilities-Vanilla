@@ -66,6 +66,58 @@ afterEach(async () => {
 });
 
 describe('workspace file persistence', () => {
+  it('opens a picked file directly after saving the Browser workspace and retains work on failure', async () => {
+    const target = await workspace();
+    await target.state.create('markdown-editor', 'From file', 'on disk');
+    const file = fileHandle();
+    await target.persistence.switches.saveAs(file.handle);
+
+    const { state, persistence, browser } = await workspace();
+    const id = await state.create('markdown-editor', 'Browser note', 'saved');
+    state.updateSource(id, 'unsaved edit');
+    state.setAppearance({ theme: 'dark' });
+    const open = () => persistence.switches.chooseOpen(undefined, { preserveBrowser: true });
+
+    vi.stubGlobal('showOpenFilePicker', async () => {
+      throw new DOMException('Cancelled', 'AbortError');
+    });
+    expect(await open()).toBe(false);
+    vi.stubGlobal('showOpenFilePicker', async () => [fileHandle('invalid file').handle]);
+    expect(await open()).toBe(false);
+    vi.stubGlobal('showOpenFilePicker', async () => [file.handle]);
+    vi.spyOn(browser, 'save').mockRejectedValueOnce(new Error('Browser write failed'));
+    expect(await open()).toBe(false);
+    expect(state.error).toBe('Browser write failed');
+    expect(state.document(id).source).toBe('unsaved edit');
+    expect(persistence.mode).toBe('browser');
+
+    expect(await open()).toBe(true);
+    expect(persistence.mode).toBe('file');
+    expect(state.activeSession.name).toBe('From file');
+    expect((await browser.read(id)).source).toBe('unsaved edit');
+    expect((await browser.getPreference('appearance')).theme).toBe('dark');
+    expect(file.writes).toBe(1);
+  });
+
+  it('protects memory-only sessions and opens an existing file from an empty memory workspace', async () => {
+    const target = await workspace();
+    await target.state.create('markdown-editor', 'From file', 'on disk');
+    const file = fileHandle();
+    await target.persistence.switches.saveAs(file.handle);
+    const { state, persistence, browser } = await workspace();
+    browser.persistent = false;
+    const id = await state.create('markdown-editor', 'Draft', 'in memory');
+    const open = () => persistence.switches.open(file.handle, undefined, { preserveBrowser: true });
+    expect(await open()).toBe(false);
+    expect(state.error).toContain('Use Create from current workspace or Export Backup');
+    expect(state.document(id).source).toBe('in memory');
+    expect(persistence.mode).toBe('browser');
+    expect(await state.deleteMany([id])).toBe(true);
+
+    expect(await open()).toBe(true);
+    expect(state.activeSession.name).toBe('From file');
+  });
+
   it('imports legacy backups into the active file as v2 and preserves current data after failed replacement', async () => {
     const { state, persistence } = await workspace();
     const id = await state.create('markdown-editor', 'Note', 'original');

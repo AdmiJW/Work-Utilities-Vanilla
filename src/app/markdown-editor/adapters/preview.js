@@ -1,5 +1,11 @@
 import { StateField } from '@codemirror/state';
-import { Decoration, EditorView, WidgetType } from '@codemirror/view';
+import {
+  Decoration,
+  EditorView,
+  GutterMarker,
+  WidgetType,
+  lineNumberWidgetMarker,
+} from '@codemirror/view';
 import { syntaxTree } from '@codemirror/language';
 import { element } from '../../shared/dom.js';
 import { linkParts, referenceKey, readTable, safeLink } from '../functions/markdown.js';
@@ -9,6 +15,19 @@ import { renderInline, markdownText } from '../components/inline-content.js';
 import { htmlRoots } from '../functions/html-roots.js';
 import { HTMLWidget } from '../components/html-widget.js';
 import { inlineSpanActive } from '../functions/inline-format.js';
+
+class TableLineNumber extends GutterMarker {
+  constructor(number) {
+    super();
+    this.number = number;
+  }
+  eq(other) {
+    return this.number === other.number;
+  }
+  toDOM(view) {
+    return view.dom.ownerDocument.createTextNode(String(this.number));
+  }
+}
 
 class CheckboxWidget extends WidgetType {
   constructor(owner, from, checked, reading) {
@@ -178,7 +197,6 @@ export function createPreviewField(owner) {
           const range = Decoration.replace({
             widget: new TableWidget(owner, model, owner.mode === 'reading'),
             block: true,
-            inclusive: false,
           }).range(model.from, model.to);
           ranges.push(range);
           atomic.push(range);
@@ -325,6 +343,11 @@ export function createPreviewField(owner) {
     provide: (field) => [
       EditorView.decorations.from(field, (value) => value.decorations),
       EditorView.atomicRanges.of((view) => view.state.field(field).atomic),
+      lineNumberWidgetMarker.of((view, widget, block) =>
+        widget instanceof TableWidget
+          ? new TableLineNumber(view.state.doc.lineAt(block.from).number)
+          : null,
+      ),
     ],
   });
 }

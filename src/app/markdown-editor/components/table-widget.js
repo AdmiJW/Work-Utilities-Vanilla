@@ -336,6 +336,7 @@ class TableController {
           liveEditing(this.owner, true, () => this.syncing),
           drawSelection(),
           EditorView.lineWrapping,
+          EditorView.cursorScrollMargin.of(0),
           EditorView.contentAttributes.of({
             'aria-label': `Table row ${row + 1} column ${column + 1}`,
             spellcheck: 'true',
@@ -384,6 +385,7 @@ class TableController {
                 view.dispatch({
                   changes: { from, to, insert: '\n' },
                   selection: { anchor: from + 1 },
+                  scrollIntoView: true,
                   annotations: isolateHistory.of('full'),
                   userEvent: 'input.cell-break',
                 });
@@ -468,6 +470,7 @@ class TableController {
         try {
           this.owner.outer.dispatch({
             ...(changes ? { changes } : {}),
+            effects: changed ? this.owner.preserveCellViewport(this.model.from) : [],
             selection: {
               anchor: target.from + this.active.projection.toSource(selection.anchor),
               head: target.from + this.active.projection.toSource(selection.head),
@@ -596,6 +599,7 @@ class TableController {
     const transaction = active.view.state.update({
       changes: { from, to, insert },
       selection: { anchor: from + insert.length },
+      scrollIntoView: true,
       annotations: [isolateHistory.of('full'), allowHTML.of(true)],
       userEvent: 'input.paste',
     });

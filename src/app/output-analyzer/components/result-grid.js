@@ -24,7 +24,7 @@ export function createResultGrid(
       headerTextColor: isDark ? '#9aaec7' : '#62748e',
       borderColor: isDark ? '#26354b' : '#e2e8f0',
       accentColor: '#3b82f6',
-      fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+      fontFamily: 'var(--app-font)',
       fontSize: 11,
       rowHeight: 33,
       headerHeight: 34,

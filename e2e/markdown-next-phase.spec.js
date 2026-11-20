@@ -18,8 +18,145 @@ async function markdown(page, source) {
   await openApp(page);
   await page.getByRole('button', { name: 'New Markdown Editor session', exact: true }).click();
   await openFile(page, 'Open Markdown', 'phase.md', Buffer.from(source));
-  await expect(input(page)).toBeVisible();
+  await expect.poll(() => text(page)).toBe(source);
 }
+
+test('typing backtick wraps only plain highlighted text in editable modes and cells', async ({
+  page,
+}) => {
+  const source =
+    '# plain text\n\nbefore **bold**\n\n| A | B |\n| --- | --- |\n| first<br>second | other |';
+  await markdown(page, source);
+  const outer = input(page);
+  for (const mode of ['Live Preview', 'Source']) {
+    await page.getByRole('button', { name: mode, exact: true }).click();
+    await select(outer, 12, 2);
+    await page.keyboard.press('`');
+    await expect.poll(() => text(page)).toBe(source.replace('plain text', '`plain text`'));
+    expect(
+      await outer.evaluate((dom) => {
+        const state = dom.cmTile.root.view.state;
+        return [state.selection.main.anchor, state.selection.main.head];
+      }),
+    ).toEqual([13, 3]);
+    await page.keyboard.press('ControlOrMeta+Z');
+    await expect.poll(() => text(page)).toBe(source);
+  }
+  const bold = source.indexOf('bold');
+  await select(outer, bold, bold + 4);
+  await page.keyboard.press('`');
+  await expect.poll(() => text(page)).toBe(source.replace('bold', '`'));
+  await page.keyboard.press('ControlOrMeta+Z');
+  await select(outer, source.indexOf('before') + 2);
+  await page.keyboard.press('`');
+  await expect.poll(() => text(page)).toBe(source.replace('before', 'be`fore'));
+  await page.keyboard.press('ControlOrMeta+Z');
+
+  await page.getByRole('button', { name: 'Live Preview', exact: true }).click();
+  await page.getByRole('cell', { name: 'Row 2, column 1', exact: true }).click();
+  const cell = page.getByRole('textbox', { name: 'Table row 2 column 1', exact: true });
+  await select(cell, 6, 12);
+  await page.keyboard.press('`');
+  const wrapped = source.replace('second', '`second`');
+  await expect.poll(() => text(page)).toBe(wrapped);
+  await expect(cell).toBeFocused();
+  await page.keyboard.press('ControlOrMeta+Z');
+  await expect.poll(() => text(page)).toBe(source);
+  await page.keyboard.press('ControlOrMeta+Shift+Z');
+  await expect.poll(() => text(page)).toBe(wrapped);
+});
+
+test('table edits scroll only when needed and the table has no extra vertical padding', async ({
+  page,
+}) => {
+  const preceding = Array.from({ length: 24 }, (_, i) => `Before ${i}`).join('\n\n');
+  const following = Array.from({ length: 35 }, (_, i) => `After ${i}`).join('\n\n');
+  const tall = Array.from({ length: 26 }, (_, i) => `line ${i}`).join('<br>');
+  const headerLine = preceding.split('\n').length + 2;
+  await markdown(page, `${preceding}\n\n| A | B |\n| --- | --- |\n| ${tall} | x |\n\n${following}`);
+  const table = page.getByRole('table', { name: 'Markdown table', exact: true });
+  const bounds = () =>
+    table.evaluate((table, line) => {
+      const widget = table.closest('.md-table-widget');
+      const tableBox = table.getBoundingClientRect(),
+        widgetBox = widget.getBoundingClientRect();
+      const gutters = table
+        .closest('.cm-scroller')
+        .querySelectorAll('.cm-lineNumbers .cm-gutterElement');
+      const first = [...gutters].find((gutter) => gutter.textContent === String(line));
+      const next = [...gutters].find((gutter) => gutter.textContent === String(line + 3));
+      return {
+        top: tableBox.top - widgetBox.top,
+        bottom: widgetBox.bottom - tableBox.bottom,
+        firstLineOffset: first ? tableBox.top - first.getBoundingClientRect().top : null,
+        nextLineOffset: next ? next.getBoundingClientRect().top - tableBox.bottom : null,
+        nextLineText: widget.nextElementSibling?.textContent,
+        font: getComputedStyle(table).fontFamily,
+        size: getComputedStyle(table).fontSize,
+      };
+    }, headerLine);
+  await input(page).evaluate((dom, position) => {
+    const view = dom.cmTile.root.view;
+    view.scrollDOM.scrollTop = view.lineBlockAt(position).top;
+  }, preceding.length + 2);
+  const layout = await bounds();
+  expect(layout).toMatchObject({ top: 0, bottom: 0, nextLineText: '', size: '16px' });
+  expect(Math.abs(layout.firstLineOffset ?? Infinity)).toBeLessThanOrEqual(1);
+  expect(Math.abs(layout.nextLineOffset ?? Infinity)).toBeLessThanOrEqual(1);
+  expect((await bounds()).font).toMatch(/^Calibri/);
+  await table.getByRole('columnheader', { name: 'Row 1, column 1', exact: true }).click();
+  await page.keyboard.press('ArrowDown');
+  const cell = page.getByRole('textbox', { name: 'Table row 2 column 1', exact: true });
+  await select(cell, tall.replaceAll('<br>', '\n').length);
+
+  const measure = (gap) =>
+    cell.evaluate((dom, gap) => {
+      const view = dom.cmTile.root.view;
+      const scroller = dom
+        .closest('.markdown-host')
+        .querySelector(':scope > .cm-editor > .cm-scroller');
+      const viewport = scroller.getBoundingClientRect();
+      const coords = () => view.coordsAtPos(view.state.selection.main.head, -1);
+      if (gap !== undefined)
+        scroller.scrollTop += coords().bottom - (viewport.top + scroller.clientHeight - gap);
+      const box = coords();
+      return {
+        top: scroller.scrollTop,
+        gap: viewport.top + scroller.clientHeight - box.bottom,
+        lineHeight: box.bottom - box.top,
+      };
+    }, gap);
+  await measure(3);
+  const visible = await measure();
+  expect(visible.gap).toBeGreaterThan(1);
+  expect(visible.gap).toBeLessThan(5);
+  await page.keyboard.press('z');
+  await expect.poll(() => text(page)).toContain('line 25z');
+  expect((await measure()).top).toBe(visible.top);
+  await page.keyboard.press('Backspace');
+  await expect.poll(() => text(page)).toContain('line 25 |');
+  expect((await measure()).top).toBe(visible.top);
+
+  await page.keyboard.press('Shift+Enter');
+  await expect.poll(() => text(page)).toContain('line 25<br>');
+  const afterBreak = await measure();
+  expect(afterBreak.top - visible.top).toBeGreaterThan(10);
+  expect(Math.abs(afterBreak.gap)).toBeLessThanOrEqual(1);
+  await page.keyboard.press('z');
+  await expect.poll(() => text(page)).toContain('line 25<br>z');
+  const clipped = await measure(-16);
+  await page.keyboard.press('Backspace');
+  await expect.poll(() => text(page)).toContain('line 25<br> |');
+  const revealed = await measure();
+  expect(Math.abs(revealed.top - clipped.top + clipped.gap)).toBeLessThanOrEqual(1);
+  expect(Math.abs(revealed.gap)).toBeLessThanOrEqual(1);
+  await expect(cell).toBeFocused();
+
+  await page.getByRole('button', { name: 'Reading', exact: true }).click();
+  await page.getByRole('button', { name: 'Switch to dark theme', exact: true }).click();
+  await page.setViewportSize({ width: 900, height: 640 });
+  expect(await bounds()).toMatchObject({ top: 0, bottom: 0, size: '16px' });
+});
 test('table menus target clicked cells, columns fit content and Tab selects without changing arrow navigation', async ({
   page,
 }, info) => {
@@ -113,6 +250,28 @@ test('table menus target clicked cells, columns fit content and Tab selects with
   expect(geometry.overflow).toBeGreaterThan(100);
   expect(geometry.pageOverflow).toBe(0);
   await page.screenshot({ path: info.outputPath('tables-narrow-dark.png') });
+
+  await page.getByRole('cell', { name: 'Row 2, column 12', exact: true }).click();
+  const farCell = page.getByRole('textbox', { name: 'Table row 2 column 12', exact: true });
+  await select(farCell, 1);
+  const horizontal = (reset = false) =>
+    farCell.evaluate((dom, reset) => {
+      const view = dom.cmTile.root.view;
+      const scroll = dom.closest('.md-table-scroll');
+      if (reset) scroll.scrollLeft = 0;
+      const right = scroll.getBoundingClientRect().left + scroll.clientWidth;
+      return {
+        left: scroll.scrollLeft,
+        gap: right - view.coordsAtPos(view.state.selection.main.head).right,
+      };
+    }, reset);
+  const hiddenCaret = await horizontal(true);
+  expect(hiddenCaret.gap).toBeLessThan(-100);
+  await page.keyboard.press('z');
+  await expect.poll(() => text(page)).toContain('| xz |');
+  const revealedCaret = await horizontal();
+  expect(revealedCaret.left).toBeGreaterThan(100);
+  expect(Math.abs(revealedCaret.gap)).toBeLessThanOrEqual(1);
 });
 
 test('paragraph entry immediately below a table stays outside it and is undoable', async ({

@@ -36,6 +36,7 @@ export function createWorkspaceStorage(state, exportBackup) {
     );
   const open = () => p.switches.chooseOpen(confirmOpen);
   const showFile = () => {
+    const browserMode = p.mode === 'browser';
     const actions = [
       { label: 'Cancel', action: (close) => close() },
       {
@@ -50,7 +51,8 @@ export function createWorkspaceStorage(state, exportBackup) {
         primary: true,
         action: (close) => {
           close();
-          void open();
+          if (browserMode) void p.switches.chooseOpen(undefined, { preserveBrowser: true });
+          else void open();
         },
       },
     ];
@@ -90,6 +92,15 @@ export function createWorkspaceStorage(state, exportBackup) {
             ? `Current file: ${p.filename}`
             : 'Save all tools, retained sessions, images, tabs, and settings in one workspace JSON file.',
         ),
+        ...(browserMode
+          ? [
+              element(
+                'p',
+                {},
+                'Opening an existing file switches to its sessions, tabs, and settings. To save this workspace to a file, choose Create from current workspace.',
+              ),
+            ]
+          : []),
         element(
           'p',
           {},

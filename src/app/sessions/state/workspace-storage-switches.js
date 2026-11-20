@@ -11,7 +11,7 @@ export class WorkspaceStorageSwitches {
   constructor(persistence) {
     this.persistence = persistence;
   }
-  async run(action, discard = false) {
+  async run(action, { discard = false, preserveBrowser = false } = {}) {
     const p = this.persistence,
       state = p.state;
     if (state.busy) return false;
@@ -26,8 +26,23 @@ export class WorkspaceStorageSwitches {
         throw new Error(p.error);
       await state.preferenceQueue;
       await p.repository.settled();
+      if (preserveBrowser) {
+        if (p.mode !== 'browser') throw new Error('Storage mode changed. Choose the file again.');
+        if (!p.repository.persistent && state.summaries.length)
+          throw new Error(
+            'This workspace is in memory only. Use Create from current workspace or Export Backup before opening another workspace.',
+          );
+      }
       // Browser failures must not prevent recovery of live drafts into a new file.
-      await state.autosave.flush(undefined, true);
+      const saved = await state.autosave.flush(undefined, true);
+      if (preserveBrowser) {
+        if (!saved)
+          throw new Error(state.autosave.error || 'Could not save the Browser workspace.');
+        if (p.repository.persistent) {
+          await p.repository.setPreference('workspace', state.workspace());
+          await p.repository.setPreference('appearance', state.appearance);
+        }
+      }
       p.transitioning = true;
       await p.writeQueue;
       await action();
@@ -77,16 +92,23 @@ export class WorkspaceStorageSwitches {
       p.state.fail(error);
       return false;
     }
-    return this.run(async () => {
-      const backup = await snapshotWorkspace(p.state);
-      const backend = new MemoryRepository(backup);
-      const connection = await readConnection(handle);
-      const baseline = await p.write(JSON.stringify(backup, null, 2), handle, connection.baseline);
-      p.repository.use(backend, 'file');
-      p.handle = handle;
-      p.baseline = baseline;
-      p.state.error = '';
-    }, true);
+    return this.run(
+      async () => {
+        const backup = await snapshotWorkspace(p.state);
+        const backend = new MemoryRepository(backup);
+        const connection = await readConnection(handle);
+        const baseline = await p.write(
+          JSON.stringify(backup, null, 2),
+          handle,
+          connection.baseline,
+        );
+        p.repository.use(backend, 'file');
+        p.handle = handle;
+        p.baseline = baseline;
+        p.state.error = '';
+      },
+      { discard: true },
+    );
   }
   async reuse(confirm) {
     const p = this.persistence;
@@ -101,7 +123,7 @@ export class WorkspaceStorageSwitches {
       return false;
     }
   }
-  async chooseOpen(confirm) {
+  async chooseOpen(confirm, options) {
     let handle;
     try {
       [handle] = await globalThis.showOpenFilePicker({
@@ -113,49 +135,56 @@ export class WorkspaceStorageSwitches {
       if (error.name !== 'AbortError') this.persistence.state.fail(error);
       return false;
     }
-    return this.open(handle, confirm);
+    return this.open(handle, confirm, options);
   }
-  async open(handle, confirm = async () => true) {
+  async open(handle, confirm, { preserveBrowser = false } = {}) {
     const p = this.persistence;
     // Read, decode and confirm before touching the active workspace/backend.
     let backup, connection;
     try {
       connection = await readConnection(handle);
       backup = await validateSnapshot(connection.text);
-      const current = await snapshotWorkspace(p.state);
-      if (!p.needsReconnect && !sameWorkspace(current, backup) && !(await confirm(backup)))
-        return false;
+      if (confirm && !p.needsReconnect) {
+        const current = await snapshotWorkspace(p.state);
+        if (!sameWorkspace(current, backup) && !(await confirm(backup))) return false;
+      }
     } catch (error) {
       p.state.fail(error);
       return false;
     }
-    return this.run(async () => {
-      const latest = await readConnection(handle);
-      if (latest.baseline !== connection.baseline)
-        throw new Error('The selected file changed while opening. Open it again.');
-      const backend = new MemoryRepository(backup);
-      p.repository.use(backend, 'file');
-      p.handle = handle;
-      p.baseline = connection.baseline;
-      p.state.adoptWorkspace(backup);
-    }, p.needsReconnect);
+    return this.run(
+      async () => {
+        const latest = await readConnection(handle);
+        if (latest.baseline !== connection.baseline)
+          throw new Error('The selected file changed while opening. Open it again.');
+        const backend = new MemoryRepository(backup);
+        p.repository.use(backend, 'file');
+        p.handle = handle;
+        p.baseline = connection.baseline;
+        p.state.adoptWorkspace(backup);
+      },
+      { discard: p.needsReconnect, preserveBrowser },
+    );
   }
   async browser(confirm) {
     const p = this.persistence;
     if (p.mode === 'browser') return true;
-    return this.run(async () => {
-      const existing = await snapshotRepository(p.repository.browser);
-      const current = p.needsReconnect ? existing : await snapshotWorkspace(p.state);
-      if (!p.needsReconnect && !sameWorkspace(current, existing) && !(await confirm())) {
-        const cancelled = new Error('Cancelled');
-        cancelled.name = 'AbortError';
-        throw cancelled;
-      }
-      if (!p.needsReconnect) await p.repository.browser.replaceWorkspace(current);
-      p.repository.use(p.repository.browser, 'browser');
-      p.baseline = undefined;
-      p.state.adoptWorkspace(current);
-    }, true);
+    return this.run(
+      async () => {
+        const existing = await snapshotRepository(p.repository.browser);
+        const current = p.needsReconnect ? existing : await snapshotWorkspace(p.state);
+        if (!p.needsReconnect && !sameWorkspace(current, existing) && !(await confirm())) {
+          const cancelled = new Error('Cancelled');
+          cancelled.name = 'AbortError';
+          throw cancelled;
+        }
+        if (!p.needsReconnect) await p.repository.browser.replaceWorkspace(current);
+        p.repository.use(p.repository.browser, 'browser');
+        p.baseline = undefined;
+        p.state.adoptWorkspace(current);
+      },
+      { discard: true },
+    );
   }
   async reload(confirm) {
     const p = this.persistence;

@@ -142,8 +142,29 @@ test('file saves survive handle restoration and Browser metadata removal, then c
     'true',
   );
   await page.getByRole('button', { name: 'File', exact: true }).click();
-  await page.getByRole('button', { name: 'Open existing workspace file', exact: true }).click();
-  await page.getByRole('button', { name: 'Open workspace', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'Workspace file', exact: true });
+  await expect(dialog).toContainText('Opening an existing file switches to its sessions');
+  await dialog.getByRole('button', { name: 'Open existing workspace file', exact: true }).click();
+  await expect(input(page)).toContainText('File draft');
+  await expect(page.getByRole('dialog', { name: 'Open workspace file?', exact: true })).toHaveCount(
+    0,
+  );
+  await page.evaluate(async () => {
+    const original = await window.workspaceHandle();
+    const other = JSON.parse(await (await original.getFile()).text());
+    other.documents[0].source = '# Other file';
+    window.showOpenFilePicker = async () => [
+      {
+        name: 'another-workspace.json',
+        queryPermission: async () => 'granted',
+        getFile: async () => new File([JSON.stringify(other)], 'another-workspace.json'),
+      },
+    ];
+  });
+  await page.getByRole('button', { name: 'File', exact: true }).click();
+  await dialog.getByRole('button', { name: 'Open existing workspace file', exact: true }).click();
+  const confirmation = page.getByRole('dialog', { name: 'Open workspace file?', exact: true });
+  await confirmation.getByRole('button', { name: 'Cancel', exact: true }).click();
   await expect(input(page)).toContainText('File draft');
   await page.getByRole('button', { name: 'Browser', exact: true }).click();
   await page.getByRole('button', { name: 'Use Browser storage', exact: true }).click();

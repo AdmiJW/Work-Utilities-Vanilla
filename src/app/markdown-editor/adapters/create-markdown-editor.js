@@ -1,4 +1,11 @@
-import { EditorState, StateField, StateEffect, Compartment, Transaction } from '@codemirror/state';
+import {
+  EditorSelection,
+  EditorState,
+  StateField,
+  StateEffect,
+  Compartment,
+  Transaction,
+} from '@codemirror/state';
 import { EditorView, keymap, drawSelection, lineNumbers } from '@codemirror/view';
 import {
   history,
@@ -25,7 +32,7 @@ import { html } from '@codemirror/lang-html';
 import { css } from '@codemirror/lang-css';
 import { csharp } from '@codemirror/legacy-modes/mode/clike';
 import { shell } from '@codemirror/legacy-modes/mode/shell';
-import { inlineFormat } from '../functions/inline-format.js';
+import { inlineFormat, wrapPlainCodeSelection } from '../functions/inline-format.js';
 import { liveEditing, allowHTML } from './live-editing.js';
 import { createMarkdownOutline } from '../components/markdown-outline.js';
 import { element, button } from '../../shared/dom.js';
@@ -89,12 +96,20 @@ export function createMarkdownEditor(host, source, options, callbacks) {
     appearance = new Compartment();
   const bookmarks = new Set(),
     imageCache = new Map();
+  const cellScrollAnchors = new WeakSet();
   const owner = {
     mode: ['live', 'source', 'reading'].includes(options.mode) ? options.mode : 'live',
     dark: options.dark,
     references: new Map(),
     referenceVersion: 0,
     activeTable: null,
+    preserveCellViewport(position) {
+      // An explicit target lets the outer view skip its automatic line anchoring.
+      // The nested editor scrolls its actual caret after the cell changes.
+      const anchor = EditorSelection.cursor(position);
+      cellScrollAnchors.add(anchor);
+      return EditorView.scrollIntoView(anchor);
+    },
     tables: new Set(),
     source,
     lineNumbers: options.lineNumbers !== false,
@@ -120,6 +135,7 @@ export function createMarkdownEditor(host, source, options, callbacks) {
     patch: (changes) =>
       owner.outer.dispatch({ changes, annotations: isolateHistory.of('full'), userEvent: 'input' }),
     formatKeys: () => [
+      { key: '`', run: wrapCode },
       { key: 'Mod-b', run: () => format('bold') },
       { key: 'Mod-i', run: () => format('italic') },
       {
@@ -239,6 +255,7 @@ export function createMarkdownEditor(host, source, options, callbacks) {
         history(),
         drawSelection(),
         EditorView.lineWrapping,
+        EditorView.scrollHandler.of((_view, range) => cellScrollAnchors.has(range)),
         modeConfig.of(config()),
         appearance.of(EditorView.theme({}, { dark: owner.dark })),
         preview,
@@ -326,6 +343,24 @@ export function createMarkdownEditor(host, source, options, callbacks) {
   };
   owner.outer.scrollDOM.addEventListener('scroll', scroll);
 
+  function wrapCode(view) {
+    if (view.composing || view.compositionStarted) return false;
+    const cell = owner.activeTable?.active;
+    const edit = wrapPlainCodeSelection(
+      view.state,
+      cell?.view === view ? cell.projection : null,
+      owner.mode === 'source',
+    );
+    if (!edit) return false;
+    view.dispatch({
+      ...edit,
+      scrollIntoView: view !== owner.outer,
+      annotations: isolateHistory.of('full'),
+      userEvent: 'input.format',
+    });
+    return true;
+  }
+
   function format(command, value) {
     if (owner.mode === 'reading') return false;
     const view = owner.activeTable?.active?.view ?? owner.outer;
@@ -370,6 +405,7 @@ export function createMarkdownEditor(host, source, options, callbacks) {
     view.dispatch({
       changes,
       selection,
+      scrollIntoView: view !== owner.outer,
       annotations: isolateHistory.of('full'),
       userEvent: 'input',
     });

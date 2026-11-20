@@ -1,7 +1,8 @@
 import { EditorState } from '@codemirror/state';
 import { describe, expect, it } from 'vitest';
-import { inlineFormat } from './inline-format.js';
+import { inlineFormat, wrapPlainCodeSelection } from './inline-format.js';
 import { markdownParser } from './markdown.js';
+import { CellProjection } from './cell-projection.js';
 
 function toggle(source, command, anchor, head = anchor) {
   const state = EditorState.create({ doc: source, selection: { anchor, head } });
@@ -75,5 +76,63 @@ describe('inline formatting', () => {
       },
     });
     expect(styles).toEqual(['**pple**', '**ju**']);
+  });
+});
+
+describe('typed backtick', () => {
+  function wrap(source, text, { cell = false, sourceMode = false } = {}) {
+    const projection = cell ? new CellProjection(source) : null;
+    const doc = projection?.text ?? source;
+    const start = doc.indexOf(text);
+    const state = EditorState.create({
+      doc,
+      selection: { anchor: start + text.length, head: start },
+    });
+    const edit = wrapPlainCodeSelection(state, projection, sourceMode);
+    return edit ? state.update(edit).state : null;
+  }
+
+  it.each([
+    'plain text',
+    '# plain text #',
+    '- [ ] plain text',
+    '> 1. plain text',
+    'plain text\n===',
+  ])('wraps plain text in %j and retains the reverse selection', (source) => {
+    const state = wrap(source, 'plain text');
+    expect(state.doc.toString()).toBe(source.replace('plain text', '`plain text`'));
+    const { anchor, head } = state.selection.main;
+    expect(state.sliceDoc(head, anchor)).toBe('plain text');
+  });
+
+  it.each([
+    ['before **bold**', 'before **bold'],
+    ['before **bold**', 'bold'],
+    ['[title](https://example.com)', 'title'],
+    ['![alt](image.png)', 'alt'],
+    ['before <span>inside</span>', 'inside'],
+    ['before `code`', 'code'],
+    ['```sql\nselect 1\n```', 'select 1'],
+    ['line 1\nline 2', '1\nline'],
+    ['# heading', ' heading'],
+    ['`code`plain', 'plain'],
+    ['plain`code`', 'plain'],
+    ['path\\segment', 'segment'],
+    ['plain text', ''],
+    ['plain text', ' '],
+  ])('skips %j with %j selected', (source, selected) => {
+    expect(wrap(source, selected)).toBeNull();
+  });
+
+  it('supports source table cells and inline cell context after a break', () => {
+    const table = '| A | B |\n| --- | --- |\n| one | two |';
+    expect(wrap(table, 'one')).toBeNull();
+    expect(wrap(table, 'one', { sourceMode: true }).doc.toString()).toBe(
+      table.replace('one', '`one`'),
+    );
+    expect(wrap('one<br>two', 'two', { cell: true }).doc.toString()).toBe('one\n`two`');
+    expect(wrap('one<br>two', 'one\ntwo', { cell: true })).toBeNull();
+    expect(wrap('**one<br>two**', 'two', { cell: true })).toBeNull();
+    expect(wrap('a`b', 'a`b').doc.toString()).toBe('``a`b``');
   });
 });

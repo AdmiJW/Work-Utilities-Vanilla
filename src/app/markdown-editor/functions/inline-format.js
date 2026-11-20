@@ -1,4 +1,7 @@
+import { ensureSyntaxTree } from '@codemirror/language';
 import { markdownParser } from './markdown.js';
+import { htmlRoots } from './html-roots.js';
+import { inlineNodes } from './cell-projection.js';
 
 const kinds = {
   bold: 'StrongEmphasis',
@@ -7,17 +10,102 @@ const kinds = {
   code: 'InlineCode',
 };
 const delimiters = { bold: '**', italic: '*', strike: '~~', code: '`' };
+const codePadding = (text) => /^`|`$/.test(text) || (/^ .* $/s.test(text) && /\S/.test(text));
 
 function wrap(text, delimiter) {
   if (!text) return '';
   if (delimiter.startsWith('`')) {
     const longest = Math.max(0, ...[...text.matchAll(/`+/g)].map((m) => m[0].length));
     const mark = '`'.repeat(Math.max(delimiter.length, longest + 1));
-    const pad = /^`|`$/.test(text) || (/^ .* $/s.test(text) && /\S/.test(text)) ? ' ' : '';
+    const pad = codePadding(text) ? ' ' : '';
     return mark + pad + text + pad + mark;
   }
   const [, leading, body, trailing] = text.match(/^(\s*)([\s\S]*?)(\s*)$/);
   return body ? leading + delimiter + body + delimiter + trailing : text;
+}
+
+const prose = /^(Paragraph|ATXHeading[1-6]|SetextHeading[1-6]|Task|TableCell)$/;
+const containers = new Set([
+  'Document',
+  'Blockquote',
+  'BulletList',
+  'OrderedList',
+  'ListItem',
+  'Table',
+  'TableHeader',
+  'TableRow',
+]);
+
+/** Typed backticks wrap plain text only. The toolbar still supports toggling code spans. */
+export function wrapPlainCodeSelection(state, cell = null, sourceMode = false) {
+  const { from, to, anchor } = state.selection.main;
+  if (state.readOnly || from === to) return null;
+  const line = state.doc.lineAt(from);
+  if (to > line.to) return null;
+  const selected = state.sliceDoc(from, to);
+  if (!selected.trim()) return null;
+
+  // A delimiter cannot start against another backtick run or after an odd escape.
+  const before = line.text.slice(0, from - line.from);
+  if (
+    before.endsWith('`') ||
+    line.text[to - line.from] === '`' ||
+    /(?:^|[^\\])(?:\\\\)*\\$/.test(before)
+  )
+    return null;
+  const overlaps = (start, end) => start < to && end > from;
+  if (htmlRoots(state.doc, !!cell).some((root) => overlaps(root.from, root.to))) return null;
+
+  if (cell) {
+    const start = cell.toSource(from),
+      end = cell.toSource(to);
+    let blocked = false;
+    inlineNodes(cell.source, (_node, left, right) => {
+      if (left < end && right > start) blocked = true;
+      return false;
+    });
+    if (blocked) return null;
+  } else {
+    let insideText = false,
+      blocked = false;
+    const tree = ensureSyntaxTree(state, to, 50) ?? markdownParser.parse(state.doc.toString());
+    tree.iterate({
+      from,
+      to,
+      enter(node) {
+        if (!overlaps(node.from, node.to)) return false;
+        if (node.name === 'Table' && !sourceMode) blocked = true;
+        if (containers.has(node.name)) return !blocked;
+        if (!prose.test(node.name)) {
+          blocked = true;
+          return false;
+        }
+        const first = node.node.firstChild,
+          last = node.node.lastChild;
+        const startsWithMarker =
+          first?.name === 'TaskMarker' ||
+          (first?.name === 'HeaderMark' && node.name.startsWith('ATX'));
+        const textFrom = startsWithMarker
+          ? first.to + state.sliceDoc(first.to, node.to).match(/^\s*/)[0].length
+          : node.from;
+        const textTo =
+          startsWithMarker && first !== last && last.name === 'HeaderMark' && last.from > first.to
+            ? last.from - state.sliceDoc(textFrom, last.from).match(/\s*$/)[0].length
+            : node.to;
+        insideText ||= from >= textFrom && to <= textTo;
+        return true;
+      },
+    });
+    if (blocked || !insideText) return null;
+  }
+
+  const insert = wrap(selected, '`');
+  const start = from + insert.match(/^`+/)[0].length + Number(codePadding(selected));
+  const end = start + selected.length;
+  return {
+    changes: { from, to, insert },
+    selection: anchor === from ? { anchor: start, head: end } : { anchor: end, head: start },
+  };
 }
 
 /** Clip an inline subtree without leaving half of a nested emphasis delimiter. */
@@ -150,18 +238,17 @@ export function inlineFormat(state, command) {
     const map = state.changes(edits),
       first = edits.find((edit) => edit.from === range.from),
       last = edits.find((edit) => edit.to === range.to);
-    const codePadding = (raw) =>
-      /^`|`$/.test(raw) || (/^ .* $/s.test(raw) && /\S/.test(raw)) ? 1 : 0;
     const prefix = first
       ? command === 'code'
-        ? first.insert.match(/^`+/)[0].length + codePadding(text.slice(first.from, first.to))
+        ? first.insert.match(/^`+/)[0].length +
+          Number(codePadding(text.slice(first.from, first.to)))
         : !/^\s/.test(text.slice(first.from, first.to))
           ? delimiters[command].length
           : 0
       : 0;
     const suffix = last
       ? command === 'code'
-        ? last.insert.match(/`+$/)[0].length + codePadding(text.slice(last.from, last.to))
+        ? last.insert.match(/`+$/)[0].length + Number(codePadding(text.slice(last.from, last.to)))
         : !/\s$/.test(text.slice(last.from, last.to))
           ? delimiters[command].length
           : 0
