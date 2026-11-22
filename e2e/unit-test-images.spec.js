@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import ExcelJS from 'exceljs';
-import { openApp, openLocalFile } from './helpers/application.js';
+import { runWorkspaceAction, openApp, openLocalFile } from './helpers/application.js';
 import { openFile } from './helpers/workspace.js';
 import {
   createScreenshot,
@@ -130,7 +130,7 @@ test('screenshot backups transfer to a clean offline HTML file without embedding
   await uploadScreenshots(page, [image]);
   await expect(page.locator('.screenshot-card')).toHaveCount(1);
   const backupDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export workspace', exact: true }).click();
+  await runWorkspaceAction(page, 'Export workspace');
   const backupPath = info.outputPath('image-backup.json');
   await (await backupDownload).saveAs(backupPath);
   const backup = JSON.parse(await readFile(backupPath, 'utf8'));
@@ -149,7 +149,7 @@ test('screenshot backups transfer to a clean offline HTML file without embedding
   await expect(page.locator('.screenshot-card strong')).toHaveText(['private-evidence.png']);
   await page.getByRole('button', { name: 'Dismiss', exact: true }).click();
   const appDownload = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download offline app', exact: true }).click();
+  await runWorkspaceAction(page, 'Download offline app');
   const htmlPath = info.outputPath('image-offline-app.html');
   await (await appDownload).saveAs(htmlPath);
   const html = await readFile(htmlPath, 'utf8');
@@ -242,7 +242,7 @@ test('screenshot export and recovery work with storage and workers blocked; pane
   expect(workbook.worksheets[0].getImages()).toHaveLength(3);
   await expect(page.getByText(/Background processing is unavailable/)).toBeVisible();
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export workspace', exact: true }).click();
+  await runWorkspaceAction(page, 'Export workspace');
   const path = info.outputPath('memory-images.json');
   await (await downloading).saveAs(path);
   await page.reload();

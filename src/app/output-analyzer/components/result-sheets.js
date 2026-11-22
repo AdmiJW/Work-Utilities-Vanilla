@@ -7,6 +7,7 @@ import { startInlineRename } from '../../shared/inline-rename.js';
 import { resultSheetNames, statementKeys } from '../functions/result-sheet-names.js';
 import { createTableSearch } from './table-search.js';
 import { animateEnter, cancelMotion } from '../../shared/motion.js';
+import { actionMenu } from '../../shared/ui.js';
 
 export function createResultSheets(state, id, callbacks) {
   const doc = () => state.document(id);
@@ -17,22 +18,32 @@ export function createResultSheets(state, id, callbacks) {
   let grid = null;
   let searchView = null;
   let tabsSignature = '';
-  let dark = state.appearance.theme === 'dark';
+  const renameActions = new Map();
   const tabs = element('div', {
     className: 'sheet-tabs',
     role: 'tablist',
     'aria-label': 'Result sheets',
-    hidden: true,
   });
+  const more = actionMenu(
+    'Sheet actions',
+    () => [{ label: 'Rename result sheet', action: renameActions.get(selectedSheet) }],
+    { className: 'tablet-action', hidden: true },
+  );
+  const strip = element(
+    'div',
+    { className: 'tab-strip result-tab-strip', hidden: true },
+    tabs,
+    more,
+  );
   const main = element(
     'div',
-    { className: 'sheet-main' },
+    { className: 'sheet-main', id: `result-panel-${id}` },
     element(
       'div',
       { className: 'analyzer-empty' },
       element('div', { className: 'empty-icon' }, icon('table', 29)),
-      element('h2', {}, 'Turn output into something readable.'),
-      element('p', {}, 'Open a TXT file or paste execution output, then analyze it locally.'),
+      element('h2', {}, 'No results yet'),
+      element('p', {}, 'Open a TXT file or paste execution output, then select Analyze output.'),
     ),
   );
   function sheets() {
@@ -54,12 +65,14 @@ export function createResultSheets(state, id, callbacks) {
   function render() {
     const list = sheets();
     if (!list.some((sheet) => sheet.id === selectedSheet)) selectedSheet = list[0]?.id ?? '';
-    tabs.hidden = false;
+    strip.hidden = !list.length;
     const nextTabs = JSON.stringify(list.map(({ id, name, count }) => [id, name, count]));
-    if (tabsSignature !== nextTabs)
+    const activeSheet = document.activeElement?.dataset.sheetId;
+    if (tabsSignature !== nextTabs) {
+      renameActions.clear();
       clear(
         tabs,
-        list.map((sheet) => {
+        list.map((sheet, index) => {
           const tab = button(
             [
               sheet.name,
@@ -74,6 +87,8 @@ export function createResultSheets(state, id, callbacks) {
             },
             {
               role: 'tab',
+              id: `result-tab-${id}-${sheet.id}`,
+              'aria-controls': main.id,
               'aria-selected': sheet.id === selectedSheet,
               className: sheet.id === selectedSheet ? 'active' : '',
               dataset: { sheetId: sheet.id },
@@ -94,21 +109,48 @@ export function createResultSheets(state, id, callbacks) {
                 { label: 'Result sheet name' },
               );
             tab.addEventListener('dblclick', rename);
-            tab.addEventListener('keydown', (event) => {
-              if (event.key === 'F2') {
-                event.preventDefault();
-                rename();
-              }
-            });
+            renameActions.set(sheet.id, rename);
           }
+          tab.addEventListener('keydown', (event) => {
+            if (event.key === 'F2' && renameActions.has(sheet.id)) {
+              event.preventDefault();
+              renameActions.get(sheet.id)();
+            }
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) return;
+            event.preventDefault();
+            const next =
+              event.key === 'Home'
+                ? 0
+                : event.key === 'End'
+                  ? list.length - 1
+                  : (index + (event.key === 'ArrowRight' ? 1 : -1) + list.length) % list.length;
+            const target = tabs.children[next];
+            target.focus();
+            target.click();
+          });
           return tab;
         }),
       );
+    }
     tabsSignature = nextTabs;
+    more.hidden = !renameActions.has(selectedSheet);
+    let selectedTab;
     for (const tab of tabs.querySelectorAll('[data-sheet-id]')) {
       const active = tab.dataset.sheetId === selectedSheet;
       tab.setAttribute('aria-selected', String(active));
       tab.classList.toggle('active', active);
+      tab.tabIndex = active ? 0 : -1;
+      if (active) selectedTab = tab;
+      if (tab.dataset.sheetId === activeSheet && document.activeElement === document.body)
+        tab.focus({ preventScroll: true });
+    }
+    if (selectedTab) {
+      main.setAttribute('role', 'tabpanel');
+      main.setAttribute('aria-labelledby', selectedTab.id);
+      selectedTab.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+    } else {
+      main.removeAttribute('role');
+      main.removeAttribute('aria-labelledby');
     }
     const key = `${revision}:${selectedSheet}`;
     if (renderedSheet === key) return;
@@ -177,7 +219,6 @@ export function createResultSheets(state, id, callbacks) {
       grid = createResultGrid(
         host,
         statement,
-        dark,
         doc().options.gridViews?.[selectedSheet],
         callbacks.selected,
         callbacks.inspect,
@@ -199,16 +240,12 @@ export function createResultSheets(state, id, callbacks) {
   }
   return {
     element: main,
-    tabs,
+    tabs: strip,
     setResult(value, sourceRevision) {
       result = value;
       revision = sourceRevision;
       renderedSheet = null;
       render();
-    },
-    setTheme(value) {
-      dark = value;
-      grid?.setTheme(value);
     },
     dispose() {
       cancelMotion(main);

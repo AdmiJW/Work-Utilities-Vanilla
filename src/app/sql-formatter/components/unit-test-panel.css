@@ -73,16 +73,6 @@
   display: block;
   max-width: none;
 }
-.overlay-side-panel {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: min(420px, 90%);
-  height: 100%;
-  z-index: 5;
-  box-shadow: -10px 0 35px #0002;
-}
 .sql-stage .inspector-resizer {
   cursor: col-resize;
   background: var(--border);

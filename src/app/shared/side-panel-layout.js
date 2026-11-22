@@ -1,5 +1,6 @@
 import { element } from './dom.js';
 import { animateEnter, animateExit, cancelMotion } from './motion.js';
+import { compactWorkspace } from './ui.js';
 
 export function createSidePanelLayout(stage, main, { width: initialWidth, label, changed }) {
   let width = Math.max(280, Math.min(720, Number(initialWidth) || 360));
@@ -9,7 +10,7 @@ export function createSidePanelLayout(stage, main, { width: initialWidth, label,
   const ghosts = new Set();
   stage.classList.add('motion-panel-stage');
   const settled = () => stage.dispatchEvent(new Event('layoutsettled', { bubbles: true }));
-  const media = matchMedia('(max-width: 1000px)');
+  const media = matchMedia(compactWorkspace);
   const divider = element('div', {
     className: 'inspector-resizer',
     role: 'separator',
@@ -26,7 +27,6 @@ export function createSidePanelLayout(stage, main, { width: initialWidth, label,
     divider.hidden = !panel || media.matches;
     divider.setAttribute('aria-valuenow', String(width));
     panel?.classList.toggle('overlay-side-panel', media.matches);
-    panel?.classList.toggle('overlay-inspector', media.matches);
   };
   const stop = () => {
     if (drag) {

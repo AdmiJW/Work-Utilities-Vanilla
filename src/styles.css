@@ -6,6 +6,7 @@
 @import './app/workspace/components/debug-dialog.css';
 @import './app/shared/dialog.css';
 @import './app/shared/workspace-controls.css';
+@import './app/shared/controls.css';
 @import './app/sql-formatter/components/sql-formatter.css';
 @import './app/sql-formatter/components/unit-test-panel.css';
 @import './app/output-analyzer/components/output-analyzer.css';
@@ -23,40 +24,6 @@
   flex-shrink: 0;
   vertical-align: middle;
 }
-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  padding: 7px 11px;
-  color: var(--text);
-  background: var(--panel);
-  font-size: 12px;
-}
-button:hover:not(:disabled) {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-soft);
-}
-button:disabled {
-  opacity: 0.55;
-}
-button.primary {
-  color: #fff;
-  border-color: #2563eb;
-  background: #2563eb;
-}
-button.primary:hover:not(:disabled) {
-  color: #fff;
-  background: #1d4ed8;
-}
-button[aria-pressed='true'] {
-  border-color: var(--accent);
-  color: var(--accent);
-  background: var(--accent-soft);
-}
 .tool-heading {
   display: flex;
   align-items: center;
@@ -67,6 +34,9 @@ button[aria-pressed='true'] {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.tool-heading > .icon {
+  color: var(--accent);
 }
 .hint {
   color: var(--muted);

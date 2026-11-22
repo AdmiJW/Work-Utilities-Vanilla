@@ -1,33 +1,48 @@
 :root {
-  --app-bg: #f4f6fa;
+  color-scheme: light;
+  --app-bg: #f6f7f9;
   --panel: #ffffff;
-  --panel-raised: #f8fafc;
-  --border: #e2e8f0;
-  --text: #17243a;
-  --muted: #62748e;
-  --accent: #2563eb;
+  --panel-raised: #f4f5f7;
+  --border: #dfe2e8;
+  --text: #181e29;
+  --muted: #555e70;
+  --accent: #2150c8;
   --accent-soft: #eff6ff;
   --json-string: #087f68;
   --json-literal: #a33e62;
-  --app-shadow: 0 12px 40px #0f172a0b;
-  --app-font: Calibri, 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
+  --primary: #2452d1;
+  --primary-hover: #1c43b5;
+  --primary-text: #fff;
+  --success: #137159;
+  --danger: #a41e37;
+  --danger-soft: #fff0f2;
+  --radius: 8px;
+  --radius-panel: 12px;
+  --app-shadow: 0 8px 28px #141c301a;
+  --app-font: 'Segoe UI Variable Text', 'Segoe UI', system-ui, sans-serif;
   font-family: var(--app-font);
   color: var(--text);
   background: var(--app-bg);
 }
 
 :root.dark {
-  --app-bg: #0b1220;
-  --panel: #101b2e;
-  --panel-raised: #152238;
-  --border: #26354b;
-  --text: #e3ebf7;
-  --muted: #9aaec7;
-  --accent: #75a7ff;
-  --accent-soft: #1a3052;
+  color-scheme: dark;
+  --app-bg: #101216;
+  --panel: #191c22;
+  --panel-raised: #23262e;
+  --border: #373c48;
+  --text: #eceff5;
+  --muted: #aab2c2;
+  --accent: #97b7ff;
+  --accent-soft: #213153;
+  --primary: #315bd6;
+  --primary-hover: #3a65db;
+  --success: #79dcba;
+  --danger: #ffb4bd;
+  --danger-soft: #3c2029;
   --json-string: #63d4af;
   --json-literal: #f0a7bf;
-  --app-shadow: 0 12px 40px #00000030;
+  --app-shadow: 0 8px 28px #00000050;
 }
 
 * {
@@ -87,7 +102,7 @@ ng-icon {
   width: 32px;
   height: 32px;
   border: 1px solid transparent;
-  border-radius: 6px;
+  border-radius: var(--radius);
   background: transparent;
   color: var(--muted);
 }
@@ -101,7 +116,8 @@ ng-icon {
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 8px 18px;
+  flex-wrap: wrap;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
 }
@@ -130,25 +146,8 @@ ng-icon {
   background: var(--accent-soft) !important;
 }
 .notice.error {
-  color: #b42338;
-  background: #fff1f2;
-}
-.dark .notice.error {
-  color: #ffb4bd;
-  background: #401e2b;
-}
-.p-button {
-  gap: 7px;
-  font-size: 12px;
-}
-.p-dialog {
-  max-width: calc(100vw - 32px);
-}
-.p-dialog-mask {
-  backdrop-filter: blur(3px);
-}
-.p-inputtext {
-  font-size: 13px;
+  color: var(--danger);
+  background: var(--danger-soft);
 }
 .sr-only {
   position: absolute;

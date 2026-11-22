@@ -1,4 +1,4 @@
-import { openApp } from './helpers/application.js';
+import { runWorkspaceAction, openApp } from './helpers/application.js';
 import { expect, test } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { dropFiles, enterSql, openFile, readSql } from './helpers/workspace.js';
@@ -21,7 +21,7 @@ test('TXT source imports and undo preserve the original CRLF content in workspac
   await page.keyboard.press('ControlOrMeta+Y');
   await expect(input).toHaveValue(source.replaceAll('\r\n', '\n'));
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export workspace', exact: true }).click();
+  await runWorkspaceAction(page, 'Export workspace');
   const path = info.outputPath('crlf-workspace.json');
   await (await downloading).saveAs(path);
   const backup = JSON.parse(await readFile(path, 'utf8'));

@@ -119,25 +119,9 @@
     font-size: 11px;
     font-weight: 600;
   }
-  .view-toggle {
-    display: flex;
-    border: 1px solid var(--border);
-    background: var(--panel-raised);
-    border-radius: 5px;
-    padding: 2px;
-  }
   .view-toggle button {
-    background: transparent;
-    border: 0;
-    color: var(--muted);
-    font-size: 9px;
-    padding: 4px 7px;
-    border-radius: 3px;
-  }
-  .view-toggle button.active {
-    background: var(--panel);
-    color: var(--accent);
-    box-shadow: 0 1px 3px #0000000c;
+    font-size: 11px;
+    padding: 5px 8px;
   }
   .tree-body {
     overflow: auto;

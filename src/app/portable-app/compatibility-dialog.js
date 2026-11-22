@@ -54,6 +54,8 @@ export function openCompatibility(state) {
       { className: 'compatibility-list' },
       element('dt', {}, 'Application'),
       element('dd', {}, 'Work Utilities Vanilla · version 1.0.0'),
+      element('dt', {}, 'Offline'),
+      element('dd', {}, 'Offline ready · all application resources are embedded'),
       element('dt', {}, 'Autosave'),
       element('dd', {}, storage),
       element('dt', {}, 'Background'),

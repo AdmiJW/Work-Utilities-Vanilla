@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
-import { openApp } from './helpers/application.js';
+import { runWorkspaceAction, openApp } from './helpers/application.js';
 import { openFile } from './helpers/workspace.js';
 import { createScreenshot } from './helpers/screenshots.js';
 
@@ -106,7 +106,7 @@ test('all three tools indent lines with isolated undo, reverse selections and CR
     await expect(input).not.toBeFocused();
   }
   const pending = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export workspace', exact: true }).click();
+  await runWorkspaceAction(page, 'Export workspace');
   const path = info.outputPath('indentation.json');
   await (await pending).saveAs(path);
   const backup = JSON.parse(await readFile(path, 'utf8'));

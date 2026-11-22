@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
-import { openApp, moveWorkspaceToOfflineFile } from './helpers/application.js';
+import { runWorkspaceAction, openApp, moveWorkspaceToOfflineFile } from './helpers/application.js';
 import { openFile } from './helpers/workspace.js';
 import { createScreenshot, pasteOrDropScreenshot } from './helpers/screenshots.js';
 
@@ -377,7 +377,7 @@ test('a fresh downloaded app creates and exports Markdown with no network access
 }, info) => {
   await markdown(page, '# Private Markdown fixture 758391');
   const pending = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download offline app', exact: true }).click();
+  await runWorkspaceAction(page, 'Download offline app');
   const path = info.outputPath('fresh-markdown.html');
   await (await pending).saveAs(path);
   expect(await readFile(path, 'utf8')).not.toContain('Private Markdown fixture 758391');

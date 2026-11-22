@@ -1,5 +1,6 @@
 import { element, button } from './dom.js';
 import { animateEnter, animateExit, cancelMotion } from './motion.js';
+import { icon } from './icons.js';
 
 const closing = new WeakMap();
 export function closeDialog(dialog) {
@@ -15,30 +16,39 @@ export function closeDialog(dialog) {
 }
 
 /** Native dialogs provide focus containment, Escape, and keyboard activation. */
-export function openDialog(title, content, actions = []) {
+export function openDialog(title, content, actions = [], { className, returnFocus } = {}) {
   const previousFocus = document.activeElement;
   const headingId = `dialog-${crypto.randomUUID()}`;
-  const dialog = element('dialog', { className: 'app-dialog', 'aria-labelledby': headingId });
+  const dialog = element('dialog', {
+    className: className ? `app-dialog ${className}` : 'app-dialog',
+    'aria-labelledby': headingId,
+  });
   const close = () => closeDialog(dialog);
   dialog.append(
     element(
       'header',
       {},
       element('h2', { id: headingId }, title),
-      button('×', close, {
+      button(icon('close'), close, {
         className: 'icon-button',
         'aria-label': `Close ${title.toLowerCase()}`,
       }),
     ),
     element('div', { className: 'dialog-content' }, content),
-    element(
-      'footer',
-      {},
-      actions.map(({ label, action, primary, ...attributes }) =>
-        button(label, () => action(close), { className: primary ? 'primary' : '', ...attributes }),
-      ),
-    ),
   );
+  if (actions.length)
+    dialog.append(
+      element(
+        'footer',
+        {},
+        actions.map(({ label, action, primary, ...attributes }) =>
+          button(label, () => action(close), {
+            className: primary ? 'primary' : '',
+            ...attributes,
+          }),
+        ),
+      ),
+    );
   dialog.addEventListener(
     'close',
     () => {
@@ -49,7 +59,8 @@ export function openDialog(title, content, actions = []) {
           .at(-1)
           ?.querySelector('button:not(:disabled)') ??
         document.querySelector('[role="tab"][aria-selected="true"]');
-      (previousFocus?.isConnected ? previousFocus : fallback)?.focus?.({ preventScroll: true });
+      const target = returnFocus?.() ?? previousFocus;
+      (target?.isConnected ? target : fallback)?.focus?.({ preventScroll: true });
     },
     { once: true },
   );

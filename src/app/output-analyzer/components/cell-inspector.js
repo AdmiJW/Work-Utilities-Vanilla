@@ -4,6 +4,7 @@ import { copyText } from '../../file-transfer/public-api.js';
 import { BackgroundTask } from '../../shared/background-task.js';
 import { inspectValue } from '../functions/inspect-value.js';
 import { renderJsonTree } from './json-tree.js';
+import { segmentedControl } from '../../shared/ui.js';
 
 export function createCellInspector(initialMode, modeChanged, closed) {
   let cell = null;
@@ -60,6 +61,8 @@ export function createCellInspector(initialMode, modeChanged, closed) {
   const copyJson = button('Copy JSON', () => copy(current?.inspection.pretty ?? ''), {
     className: 'copy-button',
   });
+  const views = segmentedControl('JSON view', 'view-toggle');
+  views.append(treeButton, prettyButton);
   const json = element(
     'section',
     { className: 'json-section' },
@@ -67,7 +70,7 @@ export function createCellInspector(initialMode, modeChanged, closed) {
       'div',
       { className: 'json-heading' },
       element('span', {}, icon('braces', 14), 'JSON inspection'),
-      element('div', { className: 'view-toggle' }, treeButton, prettyButton),
+      views,
     ),
     breadcrumb,
     notice,
@@ -99,7 +102,10 @@ export function createCellInspector(initialMode, modeChanged, closed) {
         name,
         position,
       ),
-      button('×', closed, { className: 'icon-button', 'aria-label': 'Close cell inspector' }),
+      button(icon('close'), closed, {
+        className: 'icon-button',
+        'aria-label': 'Close cell inspector',
+      }),
     ),
     element(
       'div',

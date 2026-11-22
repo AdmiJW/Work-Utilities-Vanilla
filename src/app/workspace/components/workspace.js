@@ -15,21 +15,42 @@ import { openDebugDialog } from './debug-dialog.js';
 import { installManualSave } from './manual-save.js';
 import { animateEnter, cancelMotion } from '../../shared/motion.js';
 import { createWorkspaceStorage } from './workspace-storage.js';
+import { actionMenu, compactWorkspace } from '../../shared/ui.js';
+import { closeDialog, openDialog } from '../../shared/dialog.js';
 
 export function mountWorkspace(root, state, lock) {
   const views = new Map();
   let generation = state.generation;
   let homeKey = '';
   let library = null;
+  let drawer = null;
+  const compact = matchMedia(compactWorkspace);
   const counts = new Map();
   const openLibrary = () => {
     if (!library?.open) library = openSessionLibrary(state);
   };
   const { backup, restore } = createWorkspaceBackupActions(state);
   const storage = createWorkspaceStorage(state, backup);
-  const sidebar = createWorkspaceSidebar(state, openLibrary);
+  const sidebar = createWorkspaceSidebar(state, openLibrary, (action) => {
+    if (!drawer?.open) return action();
+    drawer.addEventListener('close', action, { once: true });
+    void closeDialog(drawer);
+  });
+  const navigation = button(icon('expand', 19), showNavigation, {
+    className: 'icon-button tablet-action',
+    'aria-label': 'Open workspace navigation',
+    'aria-haspopup': 'dialog',
+    'aria-expanded': false,
+  });
   const breadcrumb = element('strong');
-  const saveStatus = element('span', { className: 'save-status', role: 'status' });
+  const storageFilename = element('span', { className: 'storage-filename', hidden: true });
+  const saveState = element('span');
+  const saveStatus = element(
+    'span',
+    { className: 'save-status', role: 'status' },
+    storageFilename,
+    saveState,
+  );
   const manualFeedback = element('div', {
     className: 'manual-save-feedback',
     role: 'status',
@@ -41,38 +62,33 @@ export function mountWorkspace(root, state, lock) {
     () => state.setAppearance({ theme: state.appearance.theme === 'dark' ? 'light' : 'dark' }),
     { className: 'icon-button', 'aria-label': 'Switch to dark theme' },
   );
+  const workspaceActions = actionMenu(
+    'Workspace',
+    () => [
+      { label: 'Export workspace', action: backup, disabled: state.persistence.needsReconnect },
+      { label: 'Import workspace', action: restore, disabled: state.persistence.needsReconnect },
+      { label: 'Download offline app', action: downloadApplication },
+      { label: 'Browser compatibility', action: () => openCompatibility(state, lock) },
+      { label: 'Debug', action: () => openDebugDialog(state) },
+    ],
+    { 'aria-label': 'Workspace actions' },
+  );
   const header = element(
     'header',
     { className: 'workspace-header' },
     element(
       'div',
-      { className: 'breadcrumb' },
-      icon('table'),
-      element('span', {}, 'Workspace'),
-      breadcrumb,
+      { className: 'header-start' },
+      navigation,
+      element('div', { className: 'breadcrumb' }, icon('table'), breadcrumb),
     ),
     element(
       'div',
       { className: 'header-status' },
       storage.element,
       saveStatus,
-      element(
-        'span',
-        { className: 'connectivity', title: 'All application resources are included in this HTML' },
-        'Offline ready',
-      ),
-      button(icon('download'), downloadApplication, {
-        className: 'icon-button',
-        'aria-label': 'Download offline app',
-        title: 'Download offline app',
-      }),
-      button(icon('settings'), () => openCompatibility(state, lock), {
-        className: 'icon-button',
-        'aria-label': 'Browser compatibility',
-        title: 'Browser compatibility',
-      }),
       theme,
-      button('Debug', () => openDebugDialog(state)),
+      workspaceActions,
     ),
   );
   const notice = element('div', { className: 'notice error', role: 'alert', hidden: true });
@@ -84,10 +100,7 @@ export function mountWorkspace(root, state, lock) {
   const footer = element(
     'footer',
     { className: 'workspace-footer' },
-    button('Export workspace', backup),
-    button('Import workspace', restore),
     footerInfo,
-    element('span', {}, 'Work Utilities Vanilla'),
     element('span', { className: 'version mono' }, 'v1.0'),
   );
   const main = element(
@@ -104,6 +117,24 @@ export function mountWorkspace(root, state, lock) {
   );
   const workspace = element('div', { className: 'workspace' }, sidebar.element, main);
   clear(root, workspace);
+  function showNavigation() {
+    if (drawer?.open || !compact.matches) return;
+    drawer = openDialog('Workspace navigation', sidebar.element, [], {
+      className: 'navigation-drawer',
+      returnFocus: () => (compact.matches ? navigation : sidebar.collapse),
+    });
+    navigation.setAttribute('aria-expanded', 'true');
+    drawer.addEventListener(
+      'close',
+      () => {
+        workspace.prepend(sidebar.element);
+        if (!compact.matches) sidebar.collapse.focus();
+        navigation.setAttribute('aria-expanded', 'false');
+        drawer = null;
+      },
+      { once: true },
+    );
+  }
   const stopSave = installManualSave(state, manualFeedback);
   let layoutFrame;
   const measure = () => {
@@ -115,6 +146,11 @@ export function mountWorkspace(root, state, lock) {
   };
   workspace.addEventListener('transitionend', transition);
   workspace.addEventListener('layoutsettled', measure);
+  const onCompactChange = () => {
+    if (!compact.matches && drawer?.open) void closeDialog(drawer);
+    measure();
+  };
+  compact.addEventListener('change', onCompactChange);
 
   function update() {
     applyAppearance(state.appearance);
@@ -133,23 +169,38 @@ export function mountWorkspace(root, state, lock) {
     clear(theme, icon(state.appearance.theme === 'dark' ? 'sun' : 'moon'));
     sidebar.update();
     storage.update();
-    sidebar.element.inert = state.persistence.needsReconnect;
+    sidebar.element.inert = state.busy || state.persistence.needsReconnect;
+    navigation.disabled = state.persistence.needsReconnect;
     tabs.element.inert = state.persistence.needsReconnect;
     footer.inert = state.persistence.needsReconnect;
-    breadcrumb.textContent = state.activeSession ? `› ${state.activeSession.name}` : '';
-    saveStatus.textContent = !state.repository.persistent
+    breadcrumb.textContent = state.activeSession?.name ?? 'Workspace';
+    breadcrumb.title = breadcrumb.textContent;
+    let status = !state.repository.persistent
       ? 'Memory only'
       : state.autosave.status === 'saved'
         ? 'All changes saved'
         : state.autosave.status === 'saving'
           ? 'Saving…'
           : 'Save failed';
-    saveStatus.classList.toggle('failed', state.autosave.status === 'error');
-    if (state.persistence.mode === 'file') {
-      saveStatus.textContent = `${state.persistence.filename} · ${{ saved: 'All changes saved', unsaved: 'Unsaved changes', saving: 'Saving…', error: 'Save failed', reconnect: 'Reconnect required' }[state.persistence.status]}`;
-      saveStatus.classList.toggle('failed', !!state.persistence.error);
+    const fileMode = state.persistence.mode === 'file';
+    storageFilename.hidden = !fileMode;
+    if (fileMode) {
+      storageFilename.textContent = state.persistence.filename;
+      status = {
+        saved: 'All changes saved',
+        unsaved: 'Unsaved changes',
+        saving: 'Saving…',
+        error: 'Save failed',
+        reconnect: 'Reconnect required',
+      }[state.persistence.status];
     }
-    saveStatus.title = saveStatus.textContent;
+    if (saveState.textContent !== status) saveState.textContent = status;
+    saveStatus.classList.toggle('saved', status === 'All changes saved');
+    saveStatus.classList.toggle(
+      'failed',
+      status === 'Save failed' || status === 'Reconnect required',
+    );
+    saveStatus.title = fileMode ? `${state.persistence.filename} · ${status}` : status;
     const error =
       state.error ||
       (state.persistence.mode === 'browser' ? state.autosave.error : '') ||
@@ -263,6 +314,8 @@ export function mountWorkspace(root, state, lock) {
       cancelAnimationFrame(layoutFrame);
       workspace.removeEventListener('transitionend', transition);
       workspace.removeEventListener('layoutsettled', measure);
+      compact.removeEventListener('change', onCompactChange);
+      if (drawer?.open) void closeDialog(drawer);
       unsubscribe();
       stopBackground();
       for (const view of views.values()) {

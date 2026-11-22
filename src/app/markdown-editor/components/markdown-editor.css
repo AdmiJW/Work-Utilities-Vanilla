@@ -1,9 +1,6 @@
 .markdown-tool {
   min-width: 0;
 }
-.markdown-tool .tool-toolbar {
-  flex-wrap: wrap;
-}
 .md-view-toolbar,
 .md-formatting {
   display: flex;
@@ -17,9 +14,15 @@
 .md-view-toolbar {
   justify-content: space-between;
 }
-.md-modes {
-  display: flex;
-  gap: 4px;
+.md-formatting {
+  flex-wrap: nowrap;
+  overflow: auto hidden;
+  flex-shrink: 0;
+  padding-block: 5px;
+}
+.md-formatting :is(button, select) {
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .md-formatting button {
   min-width: 30px;
@@ -27,11 +30,6 @@
   font-size: 12px;
 }
 .md-formatting select {
-  background: var(--panel);
-  color: var(--text);
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  font: inherit;
   font-size: 12px;
   padding: 5px;
 }
@@ -127,7 +125,7 @@
 }
 .markdown-host > .cm-editor > .cm-scroller {
   overflow: auto;
-  font-family: inherit;
+  font-family: Calibri, var(--app-font);
   font-size: 16px;
   line-height: 1.65;
 }
@@ -410,7 +408,6 @@ div.md-html-unit {
 }
 .md-dialog-input {
   display: block;
-  min-width: 280px;
   width: 100%;
   margin-top: 8px;
   padding: 8px;
@@ -435,8 +432,5 @@ div.md-html-unit {
   }
   .markdown-host > .cm-editor > .cm-scroller > .cm-content {
     padding: 18px 16px 20lh;
-  }
-  .markdown-tool .tool-toolbar {
-    padding: 8px 10px;
   }
 }

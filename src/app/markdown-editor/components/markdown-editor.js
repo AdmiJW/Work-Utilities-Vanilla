@@ -13,6 +13,7 @@ import {
 } from '../../file-transfer/public-api.js';
 import { createMarkdownEditor } from '../adapters/create-markdown-editor.js';
 import { readImageFile, MAX_IMAGE_BYTES } from '../functions/images.js';
+import { overflowActions, segmentedControl, toolToolbar } from '../../shared/ui.js';
 import { MAX_DOCUMENT_BYTES, utf8Size, normalize, safeLink } from '../functions/markdown.js';
 
 function textDialog(title, label, value) {
@@ -182,11 +183,7 @@ export function createMarkdownTool(state, id) {
     }
   }
 
-  const modes = element('div', {
-    className: 'md-modes',
-    role: 'group',
-    'aria-label': 'Markdown view mode',
-  });
+  const modes = segmentedControl('Markdown view mode', 'md-modes');
   const formatBar = element('div', {
     className: 'md-formatting',
     role: 'toolbar',
@@ -211,22 +208,22 @@ export function createMarkdownTool(state, id) {
       ),
     );
   const formatButtons = [
-    ['B', 'bold', 'Bold'],
-    ['I', 'italic', 'Italic'],
-    ['S', 'strike', 'Strikethrough'],
-    ['Link', 'link', 'Insert link'],
-    ['• List', 'bullet', 'Bullet list'],
-    ['1. List', 'numbered', 'Numbered list'],
-    ['☑ Tasks', 'task', 'Task list'],
-    ['Quote', 'quote', 'Blockquote'],
-    ['Code', 'code', 'Inline code'],
-    ['Code block', 'fence', 'Code block'],
-    ['Table', 'table', 'Insert table'],
-    ['Divider', 'divider', 'Divider'],
+    ['bold', 'Bold'],
+    ['italic', 'Italic'],
+    ['strike', 'Strikethrough'],
+    ['link', 'Insert link'],
+    ['bullet', 'Bullet list'],
+    ['numbered', 'Numbered list'],
+    ['task', 'Task list'],
+    ['quote', 'Blockquote'],
+    ['code', 'Inline code', 'inlineCode'],
+    ['fence', 'Code block'],
+    ['table', 'Insert table', 'insertTable'],
+    ['divider', 'Divider'],
   ];
   const heading = element(
     'select',
-    { 'aria-label': 'Heading level' },
+    { className: 'control-field', 'aria-label': 'Heading level' },
     element('option', { value: '' }, 'Heading'),
     ...[1, 2, 3, 4, 5, 6].map((level) => element('option', { value: level }, `Heading ${level}`)),
   );
@@ -236,9 +233,9 @@ export function createMarkdownTool(state, id) {
     heading.value = '';
   });
   formatBar.append(heading);
-  for (const [label, command, accessible] of formatButtons) {
+  for (const [command, label, iconName = command] of formatButtons) {
     const control = button(
-      label,
+      icon(iconName),
       () => {
         if (command === 'link') void addLink();
         else if (!editor.format(command))
@@ -248,7 +245,7 @@ export function createMarkdownTool(state, id) {
             ),
           );
       },
-      { 'aria-label': accessible, title: accessible },
+      { variant: 'ghost', 'aria-label': label, title: label },
     );
     control.addEventListener('mousedown', (event) => event.preventDefault());
     formatBar.append(control);
@@ -278,36 +275,41 @@ export function createMarkdownTool(state, id) {
     () => state.updateOptions(id, { toc: !state.document(id).options.toc }),
     { 'aria-pressed': false },
   );
+  const copy = button('Copy Markdown', () => void copyText(editor.text()).catch(fail));
   const view = element(
     'section',
     { className: 'markdown-tool tool-view', 'aria-label': 'Markdown Editor' },
-    element(
-      'div',
-      { className: 'tool-toolbar' },
-      element('div', { className: 'tool-heading' }, icon('markdown', 19), filename.element),
-      element(
-        'div',
-        { className: 'toolbar-actions' },
-        open,
-        image,
-        button('Copy Markdown', () => void copyText(editor.text()).catch(fail)),
-        button(
-          'Export Markdown',
-          () =>
-            downloadFile(
-              editor.text(),
-              sanitizeFileName(state.fileName(id), '.md'),
-              'text/markdown;charset=utf-8',
-            ),
-          { className: 'primary' },
-        ),
+    toolToolbar(
+      'markdown',
+      filename.element,
+      open,
+      image,
+      copy,
+      overflowActions('Markdown file actions', open, image, copy),
+      button(
+        'Export Markdown',
+        () =>
+          downloadFile(
+            editor.text(),
+            sanitizeFileName(state.fileName(id), '.md'),
+            'text/markdown;charset=utf-8',
+          ),
+        { variant: 'primary' },
       ),
     ),
     element(
       'div',
       { className: 'md-view-toolbar' },
       modes,
-      element('div', { className: 'toolbar-actions' }, lineNumbers, toc, wide, findButton),
+      element(
+        'div',
+        { className: 'toolbar-actions' },
+        lineNumbers,
+        toc,
+        wide,
+        overflowActions('View options', lineNumbers, toc, wide),
+        findButton,
+      ),
     ),
     formatBar,
     notice,

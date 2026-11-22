@@ -21,7 +21,7 @@ test('workspace themes, independent SQL tabs, undo, autosave, and reopen', async
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
   await openApp(page);
-  await expect(page.getByRole('heading', { name: 'A little less repetitive.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Workspace' })).toBeVisible();
   await mkdir('artifacts', { recursive: true });
   await page.screenshot({ path: join('artifacts', `welcome-light-${info.project.name}.png`) });
   await page.getByRole('button', { name: 'Switch to dark theme' }).click();

@@ -20,6 +20,18 @@ import {
   Copy,
   X,
   FilePenLine,
+  Bold,
+  Italic,
+  Strikethrough,
+  Link2,
+  List,
+  ListOrdered,
+  ListTodo,
+  Quote,
+  Code,
+  SquareCode,
+  Table2,
+  Minus,
 } from 'lucide';
 
 const icons = {
@@ -43,6 +55,18 @@ const icons = {
   copy: Copy,
   close: X,
   markdown: FilePenLine,
+  bold: Bold,
+  italic: Italic,
+  strike: Strikethrough,
+  link: Link2,
+  bullet: List,
+  numbered: ListOrdered,
+  task: ListTodo,
+  quote: Quote,
+  inlineCode: Code,
+  fence: SquareCode,
+  insertTable: Table2,
+  divider: Minus,
 };
 
 export function icon(name, size = 16) {

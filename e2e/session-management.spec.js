@@ -1,4 +1,4 @@
-import { openApp } from './helpers/application.js';
+import { openApp, startSession } from './helpers/application.js';
 import { expect, test } from '@playwright/test';
 import { enterSql, renameTab, readSql } from './helpers/workspace.js';
 test('horizontal tab dragging persists order and context menus archive the correct sessions', async ({
@@ -78,8 +78,7 @@ test('horizontal tab dragging persists order and context menus archive the corre
   await fourth.getByRole('button', { name: 'Reopen Fourth', exact: true }).click();
   expect(await readSql(page, info.outputPath('archived.sql'))).toBe("SELECT 'save before close';");
   await page.setViewportSize({ width: 1e3, height: 720 });
-  for (let index = 0; index < 7; index++)
-    await page.getByRole('button', { name: 'New SQL Formatter session', exact: true }).click();
+  for (let index = 0; index < 7; index++) await startSession(page, 'SQL Formatter');
   await expect
     .poll(() =>
       page

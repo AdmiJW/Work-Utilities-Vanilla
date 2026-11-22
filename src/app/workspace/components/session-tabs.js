@@ -4,6 +4,7 @@ import { openContextMenu } from '../../shared/context-menu.js';
 import { icon } from '../../shared/icons.js';
 import { attachTabDrag } from './tab-drag.js';
 import { tools } from '../../shared/tool-details.js';
+import { actionMenu } from '../../shared/ui.js';
 
 export function createSessionTabs(state) {
   const host = element('div', {
@@ -26,24 +27,26 @@ export function createSessionTabs(state) {
       },
     });
   };
-  const context = (event, session, tab) =>
-    openContextMenu(
-      event,
-      [
-        { label: 'Close', action: () => state.close(session.id) },
-        {
-          label: 'Close to the Right',
-          disabled: state.order.at(-1) === session.id,
-          action: () => state.closeMany(state.order.slice(state.order.indexOf(session.id) + 1)),
-        },
-        { label: 'Close All', action: () => state.closeMany([...state.order]) },
-        { label: 'Rename', action: () => rename(session, tab) },
-      ],
-      tab,
-    );
+  const actions = (session, tab) => [
+    { label: 'Close', action: () => state.close(session.id) },
+    {
+      label: 'Close to the Right',
+      disabled: state.order.at(-1) === session.id,
+      action: () => state.closeMany(state.order.slice(state.order.indexOf(session.id) + 1)),
+    },
+    { label: 'Close All', action: () => state.closeMany([...state.order]) },
+    { label: 'Rename', action: () => rename(session, tab) },
+  ];
+  const more = actionMenu(
+    'Tab actions',
+    () => actions(state.activeSession, nodes.get(state.activeId).tab),
+    { className: 'tablet-action', disabled: true },
+  );
+  const strip = element('div', { className: 'tab-strip' }, host, more);
   function update() {
     if (renaming) return;
-    host.hidden = state.openSessions.length === 0;
+    strip.hidden = state.openSessions.length === 0;
+    more.disabled = !state.activeSession || state.openingId !== null;
     const key = JSON.stringify([
       state.activeId,
       state.openSessions.map(({ id, name }) => [id, name]),
@@ -80,7 +83,7 @@ export function createSessionTabs(state) {
         },
       );
       tab.addEventListener('dblclick', () => rename(current(), tab));
-      const close = button('×', () => state.close(session.id), {
+      const close = button(icon('close', 13), () => state.close(session.id), {
         className: 'tab-close',
         'aria-label': `Close ${session.name}`,
       });
@@ -99,7 +102,7 @@ export function createSessionTabs(state) {
       });
       const openMenu = (event) => {
         event.preventDefault();
-        context(event, current(), tab);
+        openContextMenu(event, actions(current(), tab), tab);
       };
       shell.addEventListener('contextmenu', openMenu);
       tab.addEventListener('keydown', (event) => {
@@ -140,5 +143,5 @@ export function createSessionTabs(state) {
       .querySelector('[aria-selected="true"]')
       ?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
   }
-  return { element: host, update };
+  return { element: strip, update };
 }

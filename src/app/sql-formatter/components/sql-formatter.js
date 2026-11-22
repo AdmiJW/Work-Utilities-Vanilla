@@ -1,5 +1,5 @@
 import { element, button, clear, message } from '../../shared/dom.js';
-import { icon } from '../../shared/icons.js';
+import { overflowActions, toolToolbar } from '../../shared/ui.js';
 import { createExportFilename } from '../../sessions/public-api.js';
 import { createSidePanelLayout } from '../../shared/side-panel-layout.js';
 import { createUnitTestPanel } from './unit-test-panel.js';
@@ -82,28 +82,25 @@ export function createSqlFormatter(state, id) {
     },
     { 'aria-expanded': false },
   );
+  const oneLine = button('One-line', () => format(formatSqlAsOneLine));
   const view = element(
     'section',
     { className: 'sql-formatter tool-view', 'aria-label': 'SQL Formatter' },
-    element(
-      'div',
-      { className: 'tool-toolbar' },
-      element('div', { className: 'tool-heading' }, icon('code', 19), filename.element),
-      element(
-        'div',
-        { className: 'toolbar-actions' },
-        button('Open SQL', async () => {
-          const file = await chooseFile('.sql');
-          if (file) await importFiles([file]);
-        }),
-        wrap,
-        unitTest,
-        button('Prettify', () => format(prettifySql)),
-        button('One-line', () => format(formatSqlAsOneLine)),
-        button('Export SQL', () => exportSql(editor.text(), state.fileName(id)), {
-          className: 'primary',
-        }),
-      ),
+    toolToolbar(
+      'code',
+      filename.element,
+      button('Open SQL', async () => {
+        const file = await chooseFile('.sql');
+        if (file) await importFiles([file]);
+      }),
+      button('Prettify', () => format(prettifySql)),
+      unitTest,
+      wrap,
+      oneLine,
+      overflowActions('SQL actions', oneLine, wrap),
+      button('Export SQL', () => exportSql(editor.text(), state.fileName(id)), {
+        variant: 'primary',
+      }),
     ),
     notice,
     stage,

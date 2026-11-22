@@ -4,70 +4,30 @@ import { sessionRecency } from '../../sessions/public-api.js';
 import { tools } from '../../shared/tool-details.js';
 
 export function renderWorkspaceHome(state, openLibrary) {
-  const createButtons = () =>
+  const createCards = () =>
     element(
       'div',
-      { className: 'new-actions', role: 'group', 'aria-label': 'Start a new session' },
-      button([icon('code'), 'New SQL Formatter', icon('plus', 13)], () =>
-        state.create('sql-formatter'),
-      ),
-      button([icon('table'), 'New Output Analyzer', icon('plus', 13)], () =>
-        state.create('output-analyzer'),
-      ),
-      button([icon('markdown'), 'New Markdown Editor', icon('plus', 13)], () =>
-        state.create('markdown-editor'),
-      ),
-    );
-  if (!state.summaries.length)
-    return element(
-      'div',
-      { className: 'welcome-home' },
-      element('span', { className: 'eyebrow' }, 'A workspace for the everyday work'),
-      element('h1', {}, 'A little less repetitive.'),
-      element(
-        'p',
-        {},
-        'Prepare SQL scripts, make sense of execution output, and write Markdown documents. Everything is processed here, on your computer.',
-      ),
-      createButtons(),
-      element(
-        'div',
-        { className: 'welcome-cards' },
-        element(
-          'article',
-          {},
-          icon('markdown', 25),
-          element('h2', {}, 'Write & preview inline'),
-          element(
-            'p',
-            {},
-            'Edit Markdown in one live document, with visual tables, local images, and portable Markdown export.',
-          ),
-        ),
-        element(
-          'article',
-          {},
-          icon('code', 25),
-          element('h2', {}, 'Write, format & export'),
-          element(
-            'p',
-            {},
-            'Edit Transact-SQL comfortably. Prettify it, put each statement on one line, and export the exact text.',
-          ),
-        ),
-        element(
-          'article',
-          {},
-          icon('table', 25),
-          element('h2', {}, 'From logs to clarity'),
-          element(
-            'p',
-            {},
-            'Explore result sheets, inspect JSON, and export text-preserving Excel workbooks.',
-          ),
+      { className: 'workspace-cards', role: 'group', 'aria-label': 'Start a new session' },
+      [
+        ['sql-formatter', 'Format, edit, and export Transact-SQL scripts.'],
+        ['output-analyzer', 'Inspect execution results and export Excel workbooks.'],
+        ['markdown-editor', 'Write and preview Markdown in one editor.'],
+      ].map(([id, description]) =>
+        button(
+          [
+            element(
+              'span',
+              { className: 'tool-card-top' },
+              element('span', { className: 'session-icon' }, icon(tools[id].icon, 19)),
+              icon('plus'),
+            ),
+            element('strong', {}, tools[id].title),
+            element('span', { className: 'muted' }, description),
+          ],
+          () => state.create(id),
+          { className: 'tool-card', 'aria-label': `New ${tools[id].title}` },
         ),
       ),
-      element('small', {}, 'Portable HTML · No account · No database connection'),
     );
   const recent = state.recentSessions.slice(0, 8);
   return element(
@@ -79,61 +39,58 @@ export function renderWorkspaceHome(state, openLibrary) {
       element(
         'header',
         { className: 'recent-header' },
-        element(
-          'div',
-          {},
-          element('span', { className: 'eyebrow' }, 'Your workspace'),
-          element('h1', {}, 'Recent sessions'),
-          element('p', {}, 'Pick up where you left off.'),
-        ),
+        element('h1', {}, recent.length ? 'Recent sessions' : 'Workspace'),
         button([icon('library'), 'Session Library'], openLibrary, { className: 'library-action' }),
       ),
-      createButtons(),
       state.openingError
         ? element('p', { className: 'notice error', role: 'alert' }, state.openingError)
         : [],
-      element(
-        'ul',
-        { className: 'recent-list', 'aria-label': 'Recently viewed sessions' },
-        recent.map((session) =>
-          element(
-            'li',
-            {},
-            button(
-              [
-                element(
-                  'span',
-                  { className: 'session-icon' },
-                  icon(tools[session.toolId].icon, 18),
+      recent.length
+        ? element(
+            'ul',
+            { className: 'recent-list', 'aria-label': 'Recently viewed sessions' },
+            recent.map((session) =>
+              element(
+                'li',
+                {},
+                button(
+                  [
+                    element(
+                      'span',
+                      { className: 'session-icon' },
+                      icon(tools[session.toolId].icon, 18),
+                    ),
+                    element(
+                      'span',
+                      { className: 'session-details' },
+                      element('strong', { title: session.name }, session.name),
+                      element(
+                        'small',
+                        {},
+                        state.openingId === session.id ? 'Opening…' : tools[session.toolId].title,
+                      ),
+                    ),
+                    element(
+                      'span',
+                      { className: 'session-time' },
+                      `${session.lastViewedAt === undefined ? 'Updated' : 'Viewed'} ${new Date(sessionRecency(session)).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`,
+                    ),
+                    icon('arrow', 14),
+                  ],
+                  () => state.activate(session.id),
+                  {
+                    className: 'recent-session',
+                    'aria-label': `Reopen ${session.name}`,
+                    disabled: state.openingId !== null,
+                    'aria-busy': state.openingId === session.id,
+                  },
                 ),
-                element(
-                  'span',
-                  { className: 'session-details' },
-                  element('strong', { title: session.name }, session.name),
-                  element(
-                    'small',
-                    {},
-                    state.openingId === session.id ? 'Opening…' : tools[session.toolId].title,
-                  ),
-                ),
-                element(
-                  'span',
-                  { className: 'session-time' },
-                  `${session.lastViewedAt === undefined ? 'Updated' : 'Viewed'} ${new Date(sessionRecency(session)).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}`,
-                ),
-                icon('arrow', 14),
-              ],
-              () => state.activate(session.id),
-              {
-                className: 'recent-session',
-                'aria-label': `Reopen ${session.name}`,
-                disabled: state.openingId !== null,
-                'aria-busy': state.openingId === session.id,
-              },
+              ),
             ),
-          ),
-        ),
-      ),
+          )
+        : null,
+      recent.length ? element('h2', { className: 'new-session-heading' }, 'New session') : null,
+      createCards(),
     ),
   );
 }

@@ -3,22 +3,12 @@
   right: 0;
   bottom: min(80px, max(0px, calc(100% - 32px)));
   z-index: 2;
-  width: 20px;
+  width: 32px;
   height: 32px;
   padding: 0;
   border-radius: 5px 0 0 5px;
   color: var(--muted);
   background: var(--panel-raised);
-}
-.analyzer .overlay-inspector {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  width: min(420px, 90%);
-  height: 100%;
-  z-index: 3;
-  box-shadow: -10px 0 35px #0002;
 }
 .analyzer .inspector {
   min-width: 0;

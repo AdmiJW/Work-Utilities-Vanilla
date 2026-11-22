@@ -9,6 +9,7 @@ import { createCellInspector } from './cell-inspector.js';
 import { createInspectorLayout } from './inspector-layout.js';
 import { createSourceInput } from './source-input.js';
 import { createResultSheets } from './result-sheets.js';
+import { toolToolbar } from '../../shared/ui.js';
 
 export function createOutputAnalyzer(state, id) {
   let result = null;
@@ -18,7 +19,6 @@ export function createOutputAnalyzer(state, id) {
   let selectedCell = null;
   let inspector = null;
   let hasAnalyzed = !!state.document(id).options.analyzed;
-  let dark = state.appearance.theme === 'dark';
   let alive = true;
   const analysis = new BackgroundTask('analyze', analyzeOutput);
   const exporter = new BackgroundTask('export', exportWorkbook);
@@ -68,7 +68,7 @@ export function createOutputAnalyzer(state, id) {
   });
   const stage = element('div', { className: 'results-stage' });
   const layout = createInspectorLayout(stage, sheetsView.element, doc().options, remember);
-  const toggleInspector = button('‹', () => (inspector ? closeInspector() : openInspector()), {
+  const toggleInspector = button(icon('expand'), () => openInspector(true), {
     className: 'inspector-toggle',
     'aria-label': 'Open cell inspector',
     title: 'Open cell inspector',
@@ -78,11 +78,10 @@ export function createOutputAnalyzer(state, id) {
   function closeInspector() {
     inspector?.dispose();
     inspector = null;
-    layout.show(null);
     toggleInspector.hidden = false;
-    toggleInspector.setAttribute('aria-label', 'Open cell inspector');
+    layout.show(null);
   }
-  function openInspector() {
+  function openInspector(focusPanel = false) {
     if (!selectedCell) {
       showError(new Error('Select a data cell, then open its inspector.'));
       return;
@@ -95,6 +94,7 @@ export function createOutputAnalyzer(state, id) {
       );
     inspector.setCell(selectedCell);
     layout.show(inspector.element);
+    if (focusPanel) inspector.element.focus({ preventScroll: true });
     toggleInspector.hidden = true;
   }
   function selectCell(value) {
@@ -176,22 +176,12 @@ export function createOutputAnalyzer(state, id) {
     }
   }
 
-  const analyzeButton = button('Analyze output', () => runAnalysis(), { className: 'primary' });
+  const analyzeButton = button('Analyze output', () => runAnalysis(), { variant: 'primary' });
   const exportButton = button('Export Excel', exportExcel);
   const view = element(
     'section',
     { className: 'analyzer tool-view', 'aria-label': 'DER/DPR Output Analyzer' },
-    element(
-      'div',
-      { className: 'tool-toolbar' },
-      element(
-        'div',
-        { className: 'tool-heading' },
-        element('span', { className: 'tool-emblem' }, icon('table', 18)),
-        filename.element,
-      ),
-      element('div', { className: 'toolbar-actions' }, analyzeButton, exportButton),
-    ),
+    toolToolbar('table', filename.element, analyzeButton, exportButton),
     sourceView.element,
     progress,
     notice,
@@ -207,10 +197,6 @@ export function createOutputAnalyzer(state, id) {
     exportButton.disabled = exporting || !result || resultRevision !== doc().revision;
     exportButton.textContent = exporting ? 'Exporting…' : 'Export Excel';
     view.classList.toggle('stale-results', !!result && resultRevision !== doc().revision);
-    if (dark !== (state.appearance.theme === 'dark')) {
-      dark = !dark;
-      sheetsView.setTheme(dark);
-    }
     inspector?.setMode(doc().options.jsonDecodeMode);
   }
   update();

@@ -14,8 +14,12 @@ export function element(tag, attributes = {}, ...children) {
   return node;
 }
 
-export function button(label, action, attributes = {}) {
-  return element('button', { type: 'button', onclick: action, ...attributes }, label);
+export function button(label, action, { variant, ...attributes } = {}) {
+  return element(
+    'button',
+    { type: 'button', onclick: action, 'data-variant': variant, ...attributes },
+    label,
+  );
 }
 
 export function clear(node, ...children) {

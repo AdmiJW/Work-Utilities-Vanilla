@@ -6,7 +6,7 @@ This is an independent repository alongside **Work-Utilities-Angular**. It start
 
 ## Open the application
 
-1. Obtain the repository's [index.html](index.html), `dist/work-utilities.html`, or use **Download offline app** on the hosted application.
+1. Obtain the repository's [index.html](index.html), `dist/work-utilities.html`, or choose **Workspace → Download offline app** on the hosted application.
 2. Save the HTML somewhere you can keep it, then open it in desktop **Chrome or Edge**.
 3. Use any tool, including file imports and exports, without internet access. No installation, local server, extension, PWA, or DevTools is required.
 
@@ -87,6 +87,8 @@ Every recoverable data range is a real **Excel Table** with filters and banded r
 Data cells are literal Excel text, including values beginning with `=`. There is no numeric/date conversion or scientific notation. Excel's row, column, cell-length, and line-feed limits are validated before download. Oversized exports are blocked with sheet/row/column details; original data is retained without truncation.
 
 ## Saving and interaction
+
+The workspace adapts to desktop and tablet widths. Below 1024 CSS pixels, the header navigation button opens the tools and Session Library, and secondary tool commands move into labeled menus. The **Workspace** menu contains backup import and export, the offline app download, Browser compatibility, and Debug.
 
 **Ctrl+S** (Cmd+S on macOS) immediately saves the active session in Browser mode or the entire workspace in File mode, including with no active tab. It also commits valid focused filename/tab-name drafts while preserving focus. Renaming an inactive tab saves that session too. Inline feedback identifies the saved session; memory-only mode and storage errors remain visible. Use export actions for portable files and workspace backups.
 

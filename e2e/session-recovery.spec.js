@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers/application.js';
+import { runWorkspaceAction, openApp } from './helpers/application.js';
 import { enterSql, readSql, renameTab } from './helpers/workspace.js';
 import { createScreenshot, uploadScreenshots } from './helpers/screenshots.js';
 
@@ -7,7 +7,7 @@ test('failed permanent deletion retains pending SQL and screenshots through a la
   page,
 }, info) => {
   await openApp(page);
-  await page.getByRole('button', { name: 'Debug', exact: true }).click();
+  await runWorkspaceAction(page, 'Debug');
   await page
     .getByRole('button', { name: 'Open debug case Screenshots and shared filename', exact: true })
     .click();

@@ -1,5 +1,6 @@
 import { expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
+import { runWorkspaceAction } from './application.js';
 async function enterSql(page, source) {
   const editor = page.locator('.cm-editor:visible');
   await expect(editor).toBeVisible();
@@ -38,7 +39,8 @@ async function dropFiles(page, target, files, surface = target) {
 }
 async function openFile(page, button, name, buffer) {
   const chooser = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: button, exact: true }).click();
+  if (button === 'Import workspace') await runWorkspaceAction(page, button);
+  else await page.getByRole('button', { name: button, exact: true }).click();
   await (await chooser).setFiles({ name, mimeType: 'text/plain', buffer });
 }
 export { dropFiles, enterSql, openFile, readSql, renameTab };

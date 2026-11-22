@@ -1,5 +1,6 @@
 import { element, button, clear, message } from '../../shared/dom.js';
 import { openDialog } from '../../shared/dialog.js';
+import { icon } from '../../shared/icons.js';
 import { BackgroundTask } from '../../shared/background-task.js';
 import { encodeBase64 } from '../../shared/image-data.js';
 import { downloadFile, sanitizeFileName, handleFileDrop } from '../../file-transfer/public-api.js';
@@ -84,7 +85,10 @@ export function createUnitTestPanel(state, id, closed) {
       'header',
       {},
       element('h2', {}, 'Unit Test'),
-      button('×', closed, { className: 'icon-button', 'aria-label': 'Close Unit Test panel' }),
+      button(icon('close'), closed, {
+        className: 'icon-button',
+        'aria-label': 'Close Unit Test panel',
+      }),
     ),
     element(
       'p',

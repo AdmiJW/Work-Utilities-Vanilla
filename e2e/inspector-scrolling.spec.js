@@ -1,4 +1,4 @@
-import { openApp } from './helpers/application.js';
+import { openApp, startSession } from './helpers/application.js';
 import { expect, test } from '@playwright/test';
 import { mkdir } from 'node:fs/promises';
 for (const viewport of [
@@ -18,9 +18,7 @@ for (const viewport of [
     const payload = JSON.stringify({ nested: inner, padding: 'y'.repeat(900) });
     const expression = `COALESCE(Payload, '${'long expression '.repeat(18)}')`;
     await openApp(page);
-    await page
-      .getByRole('button', { name: 'New DER/DPR Output Analyzer session', exact: true })
-      .click();
+    await startSession(page, 'DER/DPR Output Analyzer');
     await page.getByRole('textbox', { name: 'Execution output', exact: true }).fill(
       `SQL Statement Run: --1SELECT CONCAT_WS('|',Id,${expression}) FROM Demo
 0001|${payload}`,

@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFile, writeFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import ExcelJS from 'exceljs';
-import { openApp, openLocalFile } from './helpers/application.js';
+import { runWorkspaceAction, openApp, openLocalFile } from './helpers/application.js';
 import { enterSql, readSql, openFile } from './helpers/workspace.js';
 
 test('downloaded application contains no session data and both tools work offline in a fresh browser context', async ({
@@ -14,7 +14,7 @@ test('downloaded application contains no session data and both tools work offlin
   const privateMarker = 'SELECT portable_workspace_secret_653279;';
   await enterSql(page, privateMarker);
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Download offline app', exact: true }).click();
+  await runWorkspaceAction(page, 'Download offline app');
   const path = info.outputPath('downloaded-application.html');
   await (await downloading).saveAs(path);
   const html = await readFile(path, 'utf8');
@@ -29,7 +29,7 @@ test('downloaded application contains no session data and both tools work offlin
   });
   try {
     await local.goto(pathToFileURL(path).href);
-    await expect(local.getByRole('heading', { name: 'A little less repetitive.' })).toBeVisible();
+    await expect(local.getByRole('heading', { name: 'Workspace' })).toBeVisible();
     await local.getByRole('button', { name: 'New SQL Formatter session', exact: true }).click();
     await enterSql(local, 'SELECT\n  0001 AS Id;');
     await local.getByRole('button', { name: 'One-line', exact: true }).click();
@@ -55,7 +55,7 @@ test('downloaded application contains no session data and both tools work offlin
     await workbook.xlsx.readFile(workbookPath);
     expect(workbook.worksheets[0].getCell('A8').value).toBe('0001');
     expect(workbook.worksheets[0].getCell('B8').value).toBe(raw);
-    await local.getByRole('button', { name: 'Browser compatibility', exact: true }).click();
+    await runWorkspaceAction(local, 'Browser compatibility');
     const compatibility = local.getByRole('dialog', { name: 'Browser compatibility', exact: true });
     await expect(compatibility.locator('.status-chip')).toHaveCount(2);
     await expect(compatibility).not.toContainText('Third-party licenses');
@@ -88,7 +88,7 @@ test('workspace backup restores exact sessions and preferences, with confirmatio
   await page.getByRole('button', { name: 'Deep', exact: true }).click();
   await page.getByRole('button', { name: 'Switch to dark theme', exact: true }).click();
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export workspace', exact: true }).click();
+  await runWorkspaceAction(page, 'Export workspace');
   const path = info.outputPath('workspace.json');
   await (await downloading).saveAs(path);
   const backup = JSON.parse(await readFile(path, 'utf8'));
@@ -168,7 +168,7 @@ test('blocked workers use foreground processing and blocked clipboard opens sele
   const downloading = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export Excel', exact: true }).click();
   await (await downloading).saveAs(info.outputPath('foreground.xlsx'));
-  await page.getByRole('button', { name: 'Browser compatibility', exact: true }).click();
+  await runWorkspaceAction(page, 'Browser compatibility');
   await expect(
     page.getByRole('dialog', { name: 'Browser compatibility', exact: true }),
   ).toContainText('foreground');
@@ -187,11 +187,11 @@ test('storage denial keeps the application usable and permits backup recovery af
   await page.getByRole('button', { name: 'New SQL Formatter session', exact: true }).click();
   await enterSql(page, 'SELECT recover_memory_only;');
   const downloading = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export workspace', exact: true }).click();
+  await runWorkspaceAction(page, 'Export workspace');
   const path = info.outputPath('memory-backup.json');
   await (await downloading).saveAs(path);
   await page.reload();
-  await expect(page.getByRole('heading', { name: 'A little less repetitive.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Workspace' })).toBeVisible();
   await openLocalFile(page, 'Import workspace', path);
   await page.getByRole('button', { name: 'Restore workspace', exact: true }).click();
   expect(await readSql(page, info.outputPath('recovered.sql'))).toBe('SELECT recover_memory_only;');
@@ -214,7 +214,7 @@ test('replacing the HTML at the same local path retains the saved workspace', as
       .getByRole('tab', { name: 'SQL Formatter 01', exact: true })
       .getAttribute('id');
     const backup = page.waitForEvent('download');
-    await page.getByRole('button', { name: 'Export workspace', exact: true }).click();
+    await runWorkspaceAction(page, 'Export workspace');
     await (await backup).saveAs(info.outputPath('before-update.json'));
     await writeFile(
       path,

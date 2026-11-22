@@ -6,7 +6,6 @@ ModuleRegistry.registerModules([AllCommunityModule]);
 export function createResultGrid(
   host,
   statement,
-  dark,
   savedView,
   selected,
   inspect,
@@ -16,20 +15,19 @@ export function createResultGrid(
 ) {
   let restoring = true;
   let query = search;
-  const theme = (isDark) =>
-    themeQuartz.withParams({
-      backgroundColor: isDark ? '#101b2e' : '#ffffff',
-      foregroundColor: isDark ? '#e3ebf7' : '#24344b',
-      headerBackgroundColor: isDark ? '#152238' : '#f8fafc',
-      headerTextColor: isDark ? '#9aaec7' : '#62748e',
-      borderColor: isDark ? '#26354b' : '#e2e8f0',
-      accentColor: '#3b82f6',
-      fontFamily: 'var(--app-font)',
-      fontSize: 11,
-      rowHeight: 33,
-      headerHeight: 34,
-      wrapperBorder: false,
-    });
+  const theme = themeQuartz.withParams({
+    backgroundColor: 'var(--panel)',
+    foregroundColor: 'var(--text)',
+    headerBackgroundColor: 'var(--panel-raised)',
+    headerTextColor: 'var(--muted)',
+    borderColor: 'var(--border)',
+    accentColor: 'var(--accent)',
+    fontFamily: 'var(--app-font)',
+    fontSize: 12,
+    rowHeight: 33,
+    headerHeight: 34,
+    wrapperBorder: false,
+  });
   const remember = () => {
     if (restoring) return;
     changed({
@@ -78,7 +76,7 @@ export function createResultGrid(
       minWidth: 130,
       cellStyle: { whiteSpace: 'pre' },
     },
-    theme: theme(dark),
+    theme,
     getRowId: ({ data }) => String(data.lineNumber),
     animateRows: false,
     isExternalFilterPresent: () => !!query,
@@ -113,9 +111,6 @@ export function createResultGrid(
     setSearch(value) {
       query = value;
       api.onFilterChanged();
-    },
-    setTheme(value) {
-      api.setGridOption('theme', theme(value));
     },
     dispose() {
       restoring = true;

@@ -10,7 +10,10 @@ export function openContextMenu(event, items, trigger, label = 'Tab actions') {
     className: 'context-menu',
     role: 'menu',
     'aria-label': label,
+    tabIndex: -1,
   });
+  const anchored = trigger.getAttribute('aria-haspopup') === 'menu';
+  if (anchored) trigger.setAttribute('aria-expanded', 'true');
   let closed = false;
   const close = (restore = true) => {
     if (closed) return;
@@ -21,24 +24,39 @@ export function openContextMenu(event, items, trigger, label = 'Tab actions') {
     void animateExit(menu).then(() => menu.remove());
     document.removeEventListener('pointerdown', outside, true);
     window.removeEventListener('resize', dismiss);
-    window.removeEventListener('scroll', dismiss, true);
+    window.removeEventListener('scroll', dismissForScroll, true);
     dismissCurrent = null;
+    if (anchored) trigger.setAttribute('aria-expanded', 'false');
     if (restore && trigger.isConnected) trigger.focus();
   };
   const dismiss = () => close(false);
+  const dismissForScroll = (event) => {
+    if (!menu.contains(event.target)) dismiss();
+  };
   const outside = (pointer) => {
-    if (!menu.contains(pointer.target)) close(false);
+    if (!menu.contains(pointer.target) && !(anchored && trigger.contains(pointer.target)))
+      close(false);
   };
   for (const item of items)
     menu.append(
       button(
-        item.label,
+        [
+          item.label,
+          item.checked === undefined
+            ? null
+            : element(
+                'span',
+                { className: 'menu-check', 'aria-hidden': 'true' },
+                item.checked ? '✓' : '',
+              ),
+        ],
         () => {
           close();
           void item.action();
         },
         {
-          role: 'menuitem',
+          role: item.checked === undefined ? 'menuitem' : 'menuitemcheckbox',
+          'aria-checked': item.checked,
           disabled: item.disabled,
           'aria-disabled': !!item.disabled,
           tabIndex: -1,
@@ -58,7 +76,7 @@ export function openContextMenu(event, items, trigger, label = 'Tab actions') {
             : (index + (key.key === 'ArrowDown' ? 1 : -1) + enabled.length) % enabled.length
       ]?.focus();
     } else if (key.key === 'Escape' || key.key === 'Tab') {
-      key.preventDefault();
+      if (key.key === 'Escape') key.preventDefault();
       close();
     }
   });
@@ -69,10 +87,10 @@ export function openContextMenu(event, items, trigger, label = 'Tab actions') {
   menu.style.left = `${Math.max(8, Math.min(x, innerWidth - menu.offsetWidth - 8))}px`;
   menu.style.top = `${Math.max(8, Math.min(y, innerHeight - menu.offsetHeight - 8))}px`;
   void animateEnter(menu);
-  menu.querySelector('button:not(:disabled)')?.focus();
+  (menu.querySelector('button:not(:disabled)') ?? menu).focus({ preventScroll: true });
   document.addEventListener('pointerdown', outside, true);
   window.addEventListener('resize', dismiss);
-  window.addEventListener('scroll', dismiss, true);
+  window.addEventListener('scroll', dismissForScroll, true);
   dismissCurrent = close;
   return close;
 }

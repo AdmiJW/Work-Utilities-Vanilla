@@ -18,12 +18,13 @@ import {
   foldGutter,
   foldKeymap,
   syntaxHighlighting,
-  defaultHighlightStyle,
+  HighlightStyle,
   indentUnit,
 } from '@codemirror/language';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { sql, MSSQL } from '@codemirror/lang-sql';
+import { tags } from '@lezer/highlight';
 import { applyIndentation } from '../../shared/indentation.js';
 
 const lineEndingEffect = StateEffect.define();
@@ -34,6 +35,15 @@ const lineEnding = StateField.define({
 });
 const detectEnding = (source) => (source.includes('\r\n') ? '\r\n' : '\n');
 const normalize = (source) => source.replace(/\r\n?/g, '\n');
+const highlight = HighlightStyle.define([
+  { tag: [tags.keyword, tags.operatorKeyword], color: 'var(--accent)' },
+  { tag: [tags.string, tags.special(tags.string)], color: 'var(--json-string)' },
+  { tag: [tags.number, tags.bool, tags.null], color: 'var(--json-literal)' },
+  { tag: [tags.typeName, tags.standard(tags.name)], color: 'var(--json-literal)' },
+  { tag: tags.comment, color: 'var(--muted)', fontStyle: 'italic' },
+  { tag: [tags.name, tags.operator, tags.punctuation], color: 'var(--text)' },
+  { tag: tags.invalid, textDecoration: 'underline wavy var(--danger)' },
+]);
 
 export function createSqlEditor(host, source, options, changed, viewChanged) {
   const wrapping = new Compartment();
@@ -64,7 +74,7 @@ export function createSqlEditor(host, source, options, changed, viewChanged) {
         closeBrackets(),
         highlightSelectionMatches(),
         sql({ dialect: MSSQL }),
-        syntaxHighlighting(defaultHighlightStyle),
+        syntaxHighlighting(highlight),
         indentUnit.of('    '),
         EditorState.tabSize.of(4),
         keymap.of([

@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers/application.js';
+import { runWorkspaceAction, openApp } from './helpers/application.js';
 import { openFile } from './helpers/workspace.js';
 
 async function openMarkdown(page, source) {
@@ -337,7 +337,7 @@ test('Markdown Debug embeds all six offline examples and opens each without chan
   });
   await openApp(page);
   for (let index = 0; index < 6; index++) {
-    await page.getByRole('button', { name: 'Debug', exact: true }).click();
+    await runWorkspaceAction(page, 'Debug');
     const dialog = page.getByRole('dialog', { name: 'Debug cases', exact: true });
     await dialog.getByRole('button', { name: 'Markdown Editor', exact: true }).click();
     await expect(dialog.locator('.debug-case')).toHaveCount(6);
@@ -368,24 +368,26 @@ for (const reducedMotion of ['no-preference', 'reduce'])
   }) => {
     await page.emulateMedia({ reducedMotion });
     await openApp(page);
-    const animations = await page.evaluate(() => {
-      const trigger = document.querySelector('.header-status > button:last-child');
-      trigger.focus();
-      trigger.click();
-      const dialog = document.querySelector('dialog');
-      window.dialogCloseCount = 0;
-      dialog.addEventListener('close', () => window.dialogCloseCount++);
-      return dialog
-        .getAnimations()
-        .filter((a) => !(a instanceof CSSAnimation))
-        .map((a) => a.effect.getTiming().duration);
-    });
+    const workspaceActions = page.getByRole('button', { name: 'Workspace actions' });
+    await workspaceActions.click();
+    const animations = await page
+      .getByRole('menuitem', { name: 'Debug', exact: true })
+      .evaluate((action) => {
+        action.click();
+        const dialog = document.querySelector('dialog');
+        window.dialogCloseCount = 0;
+        dialog.addEventListener('close', () => window.dialogCloseCount++);
+        return dialog
+          .getAnimations()
+          .filter((a) => !(a instanceof CSSAnimation))
+          .map((a) => a.effect.getTiming().duration);
+      });
     if (reducedMotion === 'reduce') expect(animations).toEqual([]);
     else expect(animations).toContain(160);
     await page.keyboard.press('Escape');
     await expect(page.locator('dialog')).toHaveCount(0);
     expect(await page.evaluate(() => window.dialogCloseCount)).toBe(1);
-    await expect(page.getByRole('button', { name: 'Debug', exact: true })).toBeFocused();
+    await expect(workspaceActions).toBeFocused();
     await page.getByRole('button', { name: 'New SQL Formatter session', exact: true }).click();
     const input = page.getByRole('textbox', { name: 'SQL editor', exact: true });
     await input.focus();

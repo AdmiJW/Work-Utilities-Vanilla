@@ -7,7 +7,7 @@ test('recent homepage limits to eight, orders viewed sessions, restores state an
   page,
 }, info) => {
   await openApp(page);
-  await expect(page.getByRole('heading', { name: 'A little less repetitive.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Workspace' })).toBeVisible();
   const base = Date.UTC(2026, 9, 1);
   const records = Array.from({ length: 10 }, (_, index) => ({
     id: `saved-${index}`,
@@ -69,7 +69,7 @@ test('failed recent reopening stays recoverable and retries without duplicating 
   page,
 }) => {
   await openApp(page);
-  await expect(page.getByRole('heading', { name: 'A little less repetitive.' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Workspace' })).toBeVisible();
   const record = {
     id: 'missing',
     name: 'Recoverable query',
@@ -101,7 +101,9 @@ test('recent sessions reopen offline with analyzer state restored', async ({
   context,
 }, info) => {
   await openApp(page);
-  await expect(page.getByText('Offline ready', { exact: true })).toBeVisible({ timeout: 3e4 });
+  await expect(page.getByRole('button', { name: 'Workspace actions' })).toBeVisible({
+    timeout: 3e4,
+  });
   await seedSavedSessions(page, [
     {
       id: 'offline-analysis',

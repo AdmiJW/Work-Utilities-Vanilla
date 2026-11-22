@@ -87,6 +87,14 @@ async function fileText(page) {
     JSON.parse(await (await (await window.workspaceHandle()).getFile()).text()),
   );
 }
+async function createWorkspaceFile(page) {
+  const file = page.getByRole('button', { name: 'File', exact: true });
+  await file.click();
+  await page.getByRole('button', { name: 'Create from current workspace', exact: true }).click();
+  await expect(file).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.locator('.workspace')).toHaveAttribute('aria-busy', 'false');
+  await expect(page.locator('.save-status')).toContainText('All changes saved');
+}
 test('file saves survive handle restoration and Browser metadata removal, then carry back into Browser', async ({
   page,
 }) => {
@@ -94,13 +102,7 @@ test('file saves survive handle restoration and Browser metadata removal, then c
   await openApp(page);
   await page.getByRole('button', { name: 'New Markdown Editor session', exact: true }).click();
   await replaceSource(page, '# Browser draft');
-  await page.getByRole('button', { name: 'File', exact: true }).click();
-  await page.getByRole('button', { name: 'Create from current workspace', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'File', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
-  await expect(page.locator('.save-status')).toContainText('All changes saved');
+  await createWorkspaceFile(page);
   expect((await fileText(page)).documents[0].source).toBe('# Browser draft');
   await replaceSource(page, '# File draft');
   await page.keyboard.press('ControlOrMeta+S');
@@ -183,9 +185,7 @@ test('failed file writes retain drafts and external changes require explicit ove
   await openApp(page);
   await page.getByRole('button', { name: 'New Markdown Editor session', exact: true }).click();
   await replaceSource(page, 'original');
-  await page.getByRole('button', { name: 'File', exact: true }).click();
-  await page.getByRole('button', { name: 'Create from current workspace', exact: true }).click();
-  await expect(page.locator('.save-status')).toContainText('All changes saved');
+  await createWorkspaceFile(page);
   await replaceSource(page, 'recover me');
   await page.evaluate(() => {
     window.failNextFileWrite = true;
@@ -246,9 +246,7 @@ test('complete file workspaces retain cold screenshot sessions and reuse a chose
   await expect(page.locator('.screenshot-card')).toHaveCount(1);
   await page.getByRole('button', { name: 'New Markdown Editor session', exact: true }).click();
   await replaceSource(page, 'note');
-  await page.getByRole('button', { name: 'File', exact: true }).click();
-  await page.getByRole('button', { name: 'Create from current workspace', exact: true }).click();
-  await expect(page.locator('.save-status')).toContainText('All changes saved');
+  await createWorkspaceFile(page);
   expect((await fileText(page)).images[0].data).toBe(image.buffer.toString('base64'));
   await page.reload();
   await page.getByRole('tab', { name: 'SQL Formatter 01', exact: true }).click();

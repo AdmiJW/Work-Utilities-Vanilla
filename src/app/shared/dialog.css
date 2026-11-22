@@ -5,9 +5,9 @@
   color: var(--text);
   background: var(--panel);
   border: 1px solid var(--border);
-  border-radius: 13px;
+  border-radius: var(--radius-panel);
   padding: 0;
-  box-shadow: 0 25px 90px #0003;
+  box-shadow: var(--app-shadow);
 }
 .app-dialog::backdrop {
   background: #0b122075;
@@ -42,11 +42,6 @@
 .app-dialog input:not([type='checkbox']),
 .app-dialog textarea {
   width: 100%;
-  border: 1px solid var(--border);
-  border-radius: 6px;
-  background: var(--panel-raised);
-  color: var(--text);
-  padding: 9px 11px;
 }
 .app-dialog textarea {
   white-space: pre;
@@ -69,6 +64,21 @@
   overflow: auto;
   white-space: pre-wrap;
   max-height: 300px;
+}
+.navigation-drawer[open] {
+  display: flex;
+  flex-direction: column;
+  width: min(320px, 90vw);
+  height: 100dvh;
+  max-height: 100dvh;
+  margin: 0 auto 0 0;
+  border-radius: 0 var(--radius-panel) var(--radius-panel) 0;
+}
+.navigation-drawer > .dialog-content {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+  padding: 0;
 }
 @media (max-width: 600px) {
   .compatibility-list {

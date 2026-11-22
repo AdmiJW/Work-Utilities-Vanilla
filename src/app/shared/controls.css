@@ -1,0 +1,97 @@
+button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 7px 11px;
+  color: var(--text);
+  background: var(--panel);
+  font-size: 12px;
+  font-weight: 550;
+}
+button:hover:not(:disabled) {
+  background: var(--panel-raised);
+  border-color: color-mix(in srgb, var(--muted) 40%, var(--border));
+}
+button:disabled {
+  opacity: 0.55;
+}
+button:is(.primary, [data-variant='primary']) {
+  color: var(--primary-text);
+  border-color: transparent;
+  background: var(--primary);
+}
+button:is(.primary, [data-variant='primary']):hover:not(:disabled) {
+  border-color: transparent;
+  background: var(--primary-hover);
+}
+button[aria-pressed='true'] {
+  border-color: transparent;
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+button[data-variant='ghost'] {
+  border-color: transparent;
+  background: transparent;
+}
+button[data-variant='ghost']:hover:not(:disabled) {
+  background: var(--panel-raised);
+  color: var(--accent);
+}
+.control-field,
+.app-dialog input:not([type='checkbox']),
+.app-dialog textarea {
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--text);
+  padding: 7px 9px;
+}
+.segmented-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--panel-raised);
+}
+.segmented-control > button {
+  flex-shrink: 0;
+  background: transparent;
+  border-color: transparent;
+  border-radius: calc(var(--radius) - 2px);
+  white-space: nowrap;
+}
+.segmented-control > button[aria-pressed='true'] {
+  background: var(--panel);
+  border-color: var(--border);
+  color: var(--accent);
+}
+.tablet-action {
+  display: none;
+}
+.overlay-side-panel {
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: min(420px, 90%);
+  height: 100%;
+  z-index: 5;
+  box-shadow: var(--app-shadow);
+}
+@media (width < 1024px) {
+  .tablet-action {
+    display: inline-flex;
+  }
+  .desktop-action {
+    display: none;
+  }
+  .toolbar-actions > button,
+  .tab-strip > button,
+  .sidebar button {
+    min-height: 36px;
+  }
+}

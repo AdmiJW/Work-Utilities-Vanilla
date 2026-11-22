@@ -1,6 +1,7 @@
 import { filePickersAvailable } from '../../sessions/public-api.js';
 import { element, button } from '../../shared/dom.js';
 import { openDialog, confirmAction } from '../../shared/dialog.js';
+import { segmentedControl } from '../../shared/ui.js';
 
 export function createWorkspaceStorage(state, exportBackup) {
   const p = state.persistence;
@@ -118,12 +119,8 @@ export function createWorkspaceStorage(state, exportBackup) {
     'aria-pressed': false,
     title: 'Store this workspace in a selected file',
   });
-  const controls = element(
-    'div',
-    { className: 'storage-control', role: 'group', 'aria-label': 'Workspace storage' },
-    browser,
-    file,
-  );
+  const controls = segmentedControl('Workspace storage', 'storage-control');
+  controls.append(browser, file);
   const notice = element('div', {
     className: 'notice error storage-notice',
     role: 'alert',

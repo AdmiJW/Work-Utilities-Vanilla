@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers/application.js';
+import { runWorkspaceAction, openApp } from './helpers/application.js';
 import { enterSql, openFile, renameTab } from './helpers/workspace.js';
 
 test('tab names, filenames and import adoption are independent; inline edits and menus work with keyboard', async ({
@@ -61,7 +61,7 @@ test('Debug embeds all examples, creates prepared independent sessions, and comp
   await openApp(page);
   await page.getByRole('button', { name: 'New SQL Formatter session', exact: true }).click();
   await enterSql(page, 'SELECT existing_session;');
-  await page.getByRole('button', { name: 'Debug', exact: true }).click();
+  await runWorkspaceAction(page, 'Debug');
   const debug = page.getByRole('dialog', { name: 'Debug cases', exact: true });
   await expect(debug.locator('.debug-case')).toHaveCount(5);
   await debug
@@ -74,7 +74,7 @@ test('Debug embeds all examples, creates prepared independent sessions, and comp
   await expect(page.locator('.screenshot-card')).toHaveCount(2);
   await page.getByRole('tab', { name: 'SQL Formatter 01', exact: true }).click();
   await expect(page.locator('.cm-content:visible')).toContainText('existing_session');
-  await page.getByRole('button', { name: 'Debug', exact: true }).click();
+  await runWorkspaceAction(page, 'Debug');
   await debug.getByRole('button', { name: 'Output Analyzer', exact: true }).click();
   await expect(debug.locator('.debug-case')).toHaveCount(12);
   await debug
@@ -85,15 +85,17 @@ test('Debug embeds all examples, creates prepared independent sessions, and comp
     .click();
   await expect(page.getByRole('tablist', { name: 'Result sheets', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Export Excel', exact: true })).toBeEnabled();
-  await page.getByRole('button', { name: 'Browser compatibility', exact: true }).click();
+  await runWorkspaceAction(page, 'Browser compatibility');
   const compatibility = page.getByRole('dialog', { name: 'Browser compatibility', exact: true });
   await expect(compatibility.locator('.status-chip.available')).toHaveCount(2);
   await expect(compatibility.locator('dt')).toHaveText([
     'Application',
+    'Offline',
     'Autosave',
     'Background',
     'File persistence',
   ]);
+  await expect(compatibility.getByText(/Offline ready/)).toBeVisible();
   await expect(
     compatibility.getByRole('button', { name: 'Test a download', exact: true }),
   ).toHaveCount(0);
