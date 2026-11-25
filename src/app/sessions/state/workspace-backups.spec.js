@@ -46,7 +46,7 @@ describe('workspace backup operations', () => {
   });
   it('restores an older backup then creates and round-trips Markdown sessions', async () => {
     const { state, backups } = await workspace();
-    await state.create('sql-formatter');
+    await state.create('sql-formatter', 'Original', 'SELECT 1');
     const legacy = await backups.export();
     delete legacy.workspace.counters['markdown-editor'];
     expect(await backups.restore(legacy)).toBe(true);
@@ -63,11 +63,14 @@ describe('workspace backup operations', () => {
     const first = await state.create('sql-formatter', 'First', 'SELECT 0001;\r\n');
     state.updateOptions(first, { wordWrap: true });
     await state.close(first);
-    const empty = await state.create('sql-formatter');
+    const empty = await state.create('sql-formatter', 'Named blank');
     const active = await state.create('output-analyzer', 'Result', 'original output');
     state.updateOptions(active, { jsonDecodeMode: 'deep' });
     state.setAppearance({ theme: 'dark', collapsed: true, librarySort: 'name' });
+    const draft = await state.create('markdown-editor');
     const backup = await backups.export();
+    expect(backup.documents.some(({ id }) => id === draft)).toBe(false);
+    expect(backup.workspace.activeId).toBe(active);
     const extra = await state.create('sql-formatter', 'Discard me', 'discard');
     expect(await backups.restore(backup)).toBe(true);
     expect(state.summaries.map((item) => item.id)).toEqual([first, empty, active]);

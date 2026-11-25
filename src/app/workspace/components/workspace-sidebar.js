@@ -56,7 +56,7 @@ export function createWorkspaceSidebar(state, openLibrary, navigate) {
         state.appearance.collapsed ? 'Expand sidebar' : 'Collapse sidebar',
       );
       collapse.replaceChildren(icon(state.appearance.collapsed ? 'expand' : 'collapse'));
-      savedCount.textContent = String(state.summaries.length);
+      savedCount.textContent = String(state.savedSessions.length);
       sqlLink.classList.toggle('active', state.activeSession?.toolId === 'sql-formatter');
       analyzerLink.classList.toggle('active', state.activeSession?.toolId === 'output-analyzer');
       markdownLink.classList.toggle('active', state.activeSession?.toolId === 'markdown-editor');

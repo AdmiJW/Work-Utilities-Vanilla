@@ -1,5 +1,6 @@
 import { createGrid, ModuleRegistry, AllCommunityModule, themeQuartz } from 'ag-grid-community';
 import { matchesTableSearch } from '../functions/matches-table-search.js';
+import { resultRowColors } from '../../shared/result-row-colors.js';
 
 ModuleRegistry.registerModules([AllCommunityModule]);
 
@@ -12,6 +13,7 @@ export function createResultGrid(
   changed,
   search = '',
   countChanged = () => {},
+  highlights = {},
 ) {
   let restoring = true;
   let query = search;
@@ -78,6 +80,17 @@ export function createResultGrid(
     },
     theme,
     getRowId: ({ data }) => String(data.lineNumber),
+    getRowStyle: ({ data }) => {
+      const color = highlights[data.lineNumber];
+      if (Object.hasOwn(resultRowColors, color))
+        return {
+          backgroundColor: 'var(--result-row-fill)',
+          '--result-row-fill':
+            'color-mix(in srgb, #' +
+            resultRowColors[color] +
+            ' var(--row-highlight-strength), var(--panel))',
+        };
+    },
     animateRows: false,
     isExternalFilterPresent: () => !!query,
     doesExternalFilterPass: (node) => matchesTableSearch(node.data.values, query),
@@ -108,6 +121,14 @@ export function createResultGrid(
   restoring = false;
   return {
     api,
+    setHighlights(value) {
+      if (highlights === value) return;
+      const ids = new Set([...Object.keys(highlights), ...Object.keys(value)]);
+      const changed = [...ids].filter((id) => highlights[id] !== value[id]);
+      highlights = value;
+      const rowNodes = changed.map((id) => api.getRowNode(id)).filter(Boolean);
+      if (rowNodes.length) api.redrawRows({ rowNodes });
+    },
     setSearch(value) {
       query = value;
       api.onFilterChanged();

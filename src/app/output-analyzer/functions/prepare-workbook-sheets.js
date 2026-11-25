@@ -1,16 +1,19 @@
-import { resultSheetNames, excelSheetName } from './result-sheet-names.js';
+import { resultSheetNames } from './result-sheet-names.js';
 import { tableHeaders } from './table-headers.js';
 
-function prepareWorkbookSheets(result, customNames = {}) {
+function prepareWorkbookSheets(result, customNames = {}, rowHighlights = {}) {
   const labels = resultSheetNames(result.statements, customNames);
-  const used = new Set(['_STATEMENTS', '_DIAGNOSTICS']);
   const sheets = result.statements
     .filter((statement) => statement.kind === 'SELECT')
     .map((statement) => ({
-      name: excelSheetName(labels.get(statement.index), used),
+      name: labels.get(statement.index),
       tableName: `Result_${statement.index}`,
       headerRow: 7,
       filterColumns: statement.columns.length,
+      highlights: statement.rows.flatMap(({ lineNumber }, index) => {
+        const color = rowHighlights[statement.index]?.[lineNumber];
+        return color ? [{ row: index + 8, color }] : [];
+      }),
       rows: [
         ['SQL Statement', statement.sql],
         ['Run marker', statement.marker],

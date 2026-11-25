@@ -1,18 +1,44 @@
+.session-library-dialog {
+  width: min(820px, calc(100vw - 32px));
+}
 .library-toolbar {
   display: flex;
   gap: 8px;
   align-items: center;
-  margin-bottom: 16px;
+  margin-bottom: 12px;
 }
 .library-toolbar input {
   flex: 1;
   min-width: 0;
 }
+.library-navigation,
+.library-trail,
+.library-item-actions,
 .library-selection {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.library-navigation,
+.library-selection {
   justify-content: space-between;
-  gap: 12px;
+}
+.library-trail {
+  min-width: 0;
+}
+.library-trail button {
+  display: block;
+  max-width: min(100%, 230px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.library-trail button[aria-current='location'] {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.library-selection {
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
 }
@@ -27,12 +53,16 @@
   max-height: 45dvh;
   overflow: auto;
 }
-.saved-session {
+.saved-session,
+.library-folder {
   display: flex;
   align-items: center;
   gap: 12px;
   padding: 10px 0;
   border-bottom: 1px solid var(--border);
+}
+.library-folder > .saved-open > .icon {
+  color: var(--accent);
 }
 .saved-open {
   flex: 1;
@@ -41,6 +71,9 @@
   justify-content: flex-start;
   border: 0;
   background: transparent;
+}
+.saved-open > .icon {
+  flex-shrink: 0;
 }
 .saved-details {
   display: flex;
@@ -57,6 +90,7 @@
 .saved-details small {
   font-size: 10px;
   color: var(--muted);
+  overflow-wrap: anywhere;
 }
 .session-chip {
   font-size: 9px;
@@ -65,4 +99,43 @@
   background: var(--panel-raised);
   border: 1px solid var(--border);
   border-radius: 4px;
+}
+.library-drop-target {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  background: var(--accent-soft);
+}
+.library-dragging {
+  opacity: 0.5;
+}
+.move-folders {
+  display: grid;
+  gap: 4px;
+  max-height: 40dvh;
+  overflow: auto;
+  margin-top: 10px;
+}
+.move-folders button {
+  justify-content: flex-start;
+  text-align: left;
+  overflow-wrap: anywhere;
+}
+.move-folders .icon {
+  flex-shrink: 0;
+}
+@media (width < 540px) {
+  .library-folder,
+  .saved-session {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+  .library-folder .saved-open,
+  .saved-session .saved-open {
+    flex-basis: 55%;
+  }
+  .library-folder .library-item-actions,
+  .saved-session .library-item-actions {
+    flex: 1 0 100%;
+    justify-content: flex-end;
+  }
 }

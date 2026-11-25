@@ -60,6 +60,7 @@ export function createSessionTabs(state) {
       const existing = nodes.get(session.id);
       if (existing) {
         existing.label.textContent = session.name;
+        existing.tab.title = session.name;
         existing.tab.setAttribute('aria-selected', String(state.activeId === session.id));
         existing.tab.tabIndex = state.activeId === session.id ? 0 : -1;
         existing.shell.classList.toggle('active', state.activeId === session.id);
@@ -67,7 +68,7 @@ export function createSessionTabs(state) {
         return existing.shell;
       }
       const current = () => state.summaries.find((item) => item.id === session.id);
-      const label = element('span', {}, session.name);
+      const label = element('span', { className: 'tab-label' }, session.name);
       const tab = button(
         [icon(tools[session.toolId].icon, 13), label],
         () => {
@@ -76,6 +77,7 @@ export function createSessionTabs(state) {
         {
           role: 'tab',
           id: `tab-${session.id}`,
+          title: session.name,
           'aria-selected': state.activeId === session.id,
           'aria-controls': 'tool-panel',
           tabIndex: state.activeId === session.id ? 0 : -1,

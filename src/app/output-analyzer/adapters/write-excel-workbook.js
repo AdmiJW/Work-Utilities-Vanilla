@@ -1,4 +1,5 @@
 import ExcelJS from 'exceljs';
+import { resultRowColors } from '../../shared/result-row-colors.js';
 async function writeExcelWorkbook(sheets) {
   const workbook = new ExcelJS.Workbook();
   workbook.creator = 'Work Utilities';
@@ -22,6 +23,16 @@ async function writeExcelWorkbook(sheets) {
         columns: sheet.rows[sheet.headerRow - 1].map((name) => ({ name, filterButton: true })),
         rows: sheet.rows.slice(sheet.headerRow),
       });
+    }
+    for (const { row, color } of sheet.highlights ?? []) {
+      if (!Object.hasOwn(resultRowColors, color)) continue;
+      const fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: `FF${resultRowColors[color]}` },
+      };
+      for (let column = 1; column <= sheet.filterColumns; column++)
+        worksheet.getCell(row, column).fill = fill;
     }
     const header = worksheet.getRow(sheet.headerRow);
     header.font = { bold: true, color: { argb: 'FFFFFFFF' } };

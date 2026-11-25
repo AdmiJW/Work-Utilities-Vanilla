@@ -28,7 +28,10 @@ export class WorkspaceStorageSwitches {
       await p.repository.settled();
       if (preserveBrowser) {
         if (p.mode !== 'browser') throw new Error('Storage mode changed. Choose the file again.');
-        if (!p.repository.persistent && state.summaries.length)
+        if (
+          !p.repository.persistent &&
+          (state.savedSessions.length || state.library.tree.folders.length)
+        )
           throw new Error(
             'This workspace is in memory only. Use Create from current workspace or Export Backup before opening another workspace.',
           );

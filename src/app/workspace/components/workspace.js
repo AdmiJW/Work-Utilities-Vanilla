@@ -293,7 +293,7 @@ export function mountWorkspace(root, state, lock) {
       panel.removeAttribute('role');
       panel.removeAttribute('aria-labelledby');
       footerInfo.textContent = '';
-      const key = JSON.stringify([state.summaries, state.openingId, state.openingError]);
+      const key = JSON.stringify([state.savedSessions, state.openingId, state.openingError]);
       if (key !== homeKey || !home.firstChild) {
         homeKey = key;
         clear(home, renderWorkspaceHome(state, openLibrary));

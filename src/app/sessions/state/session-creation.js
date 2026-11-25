@@ -1,4 +1,3 @@
-import { nextViewedAt } from '../functions/session-recency.js';
 import { normalizeBaseName } from '../functions/session-filename.js';
 import { tools } from '../../shared/tool-details.js';
 
@@ -15,7 +14,6 @@ export async function createSession(state, toolId, name, source = '', initial = 
     name: name ?? `${title} ${String(number).padStart(2, '0')}`,
     createdAt: now,
     updatedAt: now,
-    lastViewedAt: nextViewedAt(state.summaries),
     isOpen: true,
   };
   const document = {
@@ -29,12 +27,12 @@ export async function createSession(state, toolId, name, source = '', initial = 
   };
   state.summaries = [...state.summaries, summary];
   state.documents.set(id, document);
-  if (initial.images?.length) state.images.add(id, initial.images);
   state.order.push(id);
   state.activeId = id;
-  state.autosave.schedule(summary, state.document(id), state.images.pending(state.document(id)));
-  state.persistWorkspace();
-  state.notify();
-  await state.autosave.flush(id);
+  state.temporary.add(id);
+  if (initial.images?.length) state.images.add(id, initial.images);
+  else if (source.trim() || name || initial.fileBaseName) state.touch(id);
+  else state.notify();
+  if (!state.temporary.has(id)) await state.autosave.flush(id);
   return id;
 }

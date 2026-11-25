@@ -274,6 +274,50 @@ test('table menus target clicked cells, columns fit content and Tab selects with
   expect(Math.abs(revealedCaret.gap)).toBeLessThanOrEqual(1);
 });
 
+test('final-cell Tab preserves the table viewport and reveals the new caret only as needed', async ({
+  page,
+}) => {
+  const source = [
+    'Before\n\n'.repeat(30),
+    '| A | B |\n| --- | --- |\n',
+    Array.from({ length: 48 }, (_, index) => `| ${index} | tail |`).join('\n'),
+    '\n\n' + 'After\n\n'.repeat(30),
+  ].join('');
+  await markdown(page, source);
+  await input(page).evaluate((dom, position) => {
+    const view = dom.cmTile.root.view;
+    view.scrollDOM.scrollTop = view.lineBlockAt(position).top;
+  }, source.indexOf('| A | B |'));
+  const last = page.getByRole('cell', { name: 'Row 49, column 2', exact: true });
+  const measure = (target, gap) =>
+    target.evaluate((dom, gap) => {
+      const view = dom.cmTile.root.view;
+      const scroller = dom
+        .closest('.markdown-host')
+        .querySelector(':scope > .cm-editor > .cm-scroller');
+      const bottom = () => scroller.getBoundingClientRect().top + scroller.clientHeight;
+      const caret = () => view.coordsAtPos(view.state.selection.main.head, -1).bottom;
+      if (gap !== undefined) scroller.scrollTop += caret() + gap - bottom();
+      return { top: scroller.scrollTop, gap: bottom() - caret() };
+    }, gap);
+  for (const gap of [120, 0]) {
+    await last.click();
+    const from = page.getByRole('textbox', { name: 'Table row 49 column 2', exact: true });
+    const before = await measure(from, gap);
+    await page.keyboard.press('Tab');
+    const to = page.getByRole('textbox', { name: 'Table row 50 column 1', exact: true });
+    await expect(to).toBeFocused();
+    const after = await measure(to);
+    if (gap) expect(Math.abs(after.top - before.top)).toBeLessThanOrEqual(1);
+    else {
+      expect(after.top - before.top).toBeGreaterThan(0);
+      expect(Math.abs(after.gap)).toBeLessThanOrEqual(2);
+    }
+    await page.keyboard.press('ControlOrMeta+Z');
+    await expect.poll(() => text(page)).toBe(source);
+  }
+});
+
 test('paragraph entry immediately below a table stays outside it and is undoable', async ({
   page,
 }) => {
@@ -426,6 +470,47 @@ test('view toggles persist per document, outline excludes HTML/code headings and
     'true',
   );
   await expect(page.locator('.md-outline')).toBeHidden();
+});
+
+test('outline clicks mark the exact nested heading across modes and hand off to manual scrolling', async ({
+  page,
+}) => {
+  const short = '# First\n\n## Parent\n\n### Child';
+  await page.setViewportSize({ width: 1280, height: 1400 });
+  await markdown(page, short);
+  await page.getByRole('button', { name: 'Table of contents', exact: true }).click();
+  const list = page.getByRole('navigation', { name: 'Document headings' });
+  const heading = (name) => list.getByRole('button', { name, exact: true });
+  const modes = ['Live Preview', 'Source', 'Reading'];
+  for (const mode of modes) {
+    await page.getByRole('button', { name: mode, exact: true }).click();
+    await heading('Child').click();
+    await expect(heading('Child')).toHaveAttribute('aria-current', 'location');
+    await heading('Parent').click();
+    await expect(heading('Parent')).toHaveAttribute('aria-current', 'location');
+  }
+  await page.setViewportSize({ width: 1280, height: 720 });
+  await page.getByRole('button', { name: 'Source', exact: true }).click();
+  const paragraph = '\n\nA line between the headings.'.repeat(42);
+  const long = '# First' + paragraph + '\n\n## Parent' + paragraph + '\n\n### Child' + paragraph;
+  await input(page).evaluate((node, source) => {
+    const view = node.cmTile.root.view;
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: source } });
+  }, long);
+  for (const mode of modes) {
+    await page.getByRole('button', { name: mode, exact: true }).click();
+    await heading('Child').click();
+    await expect(heading('Child')).toHaveAttribute('aria-current', 'location');
+    if (mode !== 'Reading') {
+      expect(
+        await input(page).evaluate((node) => node.cmTile.root.view.state.selection.main.head),
+      ).toBe(long.indexOf('### Child'));
+    }
+    await input(page).evaluate((node) => {
+      node.cmTile.root.view.scrollDOM.scrollTop = 0;
+    });
+    await expect(heading('First')).toHaveAttribute('aria-current', 'location');
+  }
 });
 
 test('inline HTML in table cells stays atomic through line-break projections and malformed HTML stays literal', async ({

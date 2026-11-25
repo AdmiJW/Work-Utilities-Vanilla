@@ -139,14 +139,22 @@ describe('session state and recency', () => {
     await state.deleteMany(['b']);
     expect(state.recentSessions.some((item) => item.id === 'b')).toBe(false);
   });
-  it('records creation and only the initially active restored session', async () => {
+  it('records the initially restored session and promotes a draft only after meaningful editing', async () => {
     const { state, repository } = await workspace(true);
     expect(repository.recordAccess).toHaveBeenCalledExactlyOnceWith('a', 10_000);
     expect(
       state.summaries.filter((item) => item.lastViewedAt !== undefined).map((item) => item.id),
     ).toEqual(['a']);
     const id = await state.create('output-analyzer');
+    state.updateOptions(id, { inputCollapsed: true });
+    state.updateSource(id, ' \n');
+    expect(state.recentSessions.some((item) => item.id === id)).toBe(false);
+    expect(state.workspace().activeId).toBe('a');
+    expect((await state.saveActive()).status).toBe('temporary');
+    expect(repository.save).not.toHaveBeenCalled();
+    state.updateSource(id, 'source');
     expect(state.recentSessions[0].id).toBe(id);
+    expect(state.workspace().activeId).toBe(id);
   });
   it('keeps failed reads recoverable and retries the same ID and state', async () => {
     const { state, repository } = await workspace();

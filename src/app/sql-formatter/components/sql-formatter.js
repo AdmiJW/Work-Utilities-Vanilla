@@ -2,6 +2,7 @@ import { element, button, clear, message } from '../../shared/dom.js';
 import { overflowActions, toolToolbar } from '../../shared/ui.js';
 import { createExportFilename } from '../../sessions/public-api.js';
 import { createSidePanelLayout } from '../../shared/side-panel-layout.js';
+import { openDialog } from '../../shared/dialog.js';
 import { createUnitTestPanel } from './unit-test-panel.js';
 import {
   chooseFile,
@@ -9,10 +10,12 @@ import {
   readImportedText,
   handleFileDrop,
   exportSql,
+  copyText,
 } from '../../file-transfer/public-api.js';
 import { createSqlEditor } from '../adapters/create-sql-editor.js';
 import { prettifySql } from '../functions/prettify-sql.js';
 import { formatSqlAsOneLine } from '../functions/format-sql-as-one-line.js';
+import { derConcatTemplate } from '../functions/der-concat-template.js';
 
 export function createSqlFormatter(state, id) {
   const filename = createExportFilename(state, id, '.sql');
@@ -49,6 +52,7 @@ export function createSqlFormatter(state, id) {
       if (mode === 'replace') editor.replace(value);
       else editor.insert(value, selection);
       if (mode === 'replace') state.setFileName(id, files[0].name, false);
+      state.retainImportedSession(id);
       notice.hidden = true;
       editor.focus();
     } catch (error) {
@@ -83,6 +87,20 @@ export function createSqlFormatter(state, id) {
     { 'aria-expanded': false },
   );
   const oneLine = button('One-line', () => format(formatSqlAsOneLine));
+  const template = button('DER CONCAT template', () =>
+    openDialog(
+      'DER CONCAT template',
+      element('textarea', {
+        className: 'mono',
+        value: derConcatTemplate,
+        rows: 18,
+        readOnly: true,
+        wrap: 'off',
+        'aria-label': 'DER CONCAT SQL',
+      }),
+      [{ label: 'Copy SQL', action: () => copyText(derConcatTemplate), primary: true }],
+    ),
+  );
   const view = element(
     'section',
     { className: 'sql-formatter tool-view', 'aria-label': 'SQL Formatter' },
@@ -95,9 +113,10 @@ export function createSqlFormatter(state, id) {
       }),
       button('Prettify', () => format(prettifySql)),
       unitTest,
+      template,
       wrap,
       oneLine,
-      overflowActions('SQL actions', oneLine, wrap),
+      overflowActions('SQL actions', template, oneLine, wrap),
       button('Export SQL', () => exportSql(editor.text(), state.fileName(id)), {
         variant: 'primary',
       }),

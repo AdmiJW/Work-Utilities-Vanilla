@@ -28,6 +28,37 @@ function backup() {
   );
 }
 describe('workspace backup interchange', () => {
+  it('validates folder placement, sibling names and the absence of cycles in v3', () => {
+    const value = backup();
+    value.schemaVersion = 3;
+    value.workspace.library = {
+      folders: [
+        { id: 'a', parentId: null, name: 'Parent' },
+        { id: 'b', parentId: 'a', name: 'Child' },
+      ],
+      placements: { one: 'b' },
+    };
+    expect(readWorkspaceBackup(JSON.stringify(value))).toEqual(value);
+    for (const patch of [
+      (tree) => {
+        tree.folders[0].parentId = 'b';
+      },
+      (tree) => {
+        tree.folders.push({ id: 'c', parentId: 'a', name: 'child' });
+      },
+      (tree) => {
+        tree.placements.one = 'missing';
+      },
+      (tree) => {
+        tree.placements.missing = 'b';
+      },
+    ]) {
+      const corrupt = structuredClone(value);
+      patch(corrupt.workspace.library);
+      expect(() => readWorkspaceBackup(JSON.stringify(corrupt))).toThrow('invalid or inconsistent');
+    }
+  });
+
   it('accepts Markdown sessions and legacy backups without their new counter', () => {
     const legacy = backup();
     expect(

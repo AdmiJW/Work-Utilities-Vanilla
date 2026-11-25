@@ -174,6 +174,7 @@ export function createMarkdownTool(state, id) {
         sizeCheck(editor.serialized(text.slice(0, mark.from) + value + text.slice(mark.to)));
         editor.insert(value, mark, true);
       }
+      state.retainImportedSession(id);
       notice.hidden = true;
       editor.focus();
     } catch (error) {

@@ -49,6 +49,7 @@ export function createSourceInput(state, id, failed, imported) {
       state.updateOptions(id, { inputCollapsed: false });
       editor.replace(value, mode, capturedSelection);
       if (mode === 'replace') state.setFileName(id, files[0].name, false);
+      state.retainImportedSession(id);
       imported();
     } catch (error) {
       if (alive) failed(error);

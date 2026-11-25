@@ -4,6 +4,7 @@ import { SessionLifecycle } from './session-lifecycle.js';
 import { nextViewedAt, recentSessions } from '../functions/session-recency.js';
 import { SessionImages } from './session-images.js';
 import { normalizeBaseName, sessionFileName } from '../functions/session-filename.js';
+import { SessionLibrary } from './session-library.js';
 
 export class SessionState extends EventTarget {
   constructor(repository) {
@@ -12,6 +13,8 @@ export class SessionState extends EventTarget {
     this.summaries = [];
     this.documents = new Map();
     this.order = [];
+    this.temporary = new Set();
+    this.lastSavedActive = null;
     this.counters = { 'sql-formatter': 0, 'output-analyzer': 0, 'markdown-editor': 0 };
     this.activeId = null;
     this.openingId = null;
@@ -26,6 +29,7 @@ export class SessionState extends EventTarget {
     this.autosave = new SessionAutosave(repository, () => this.notify());
     this.lifecycle = new SessionLifecycle(this);
     this.images = new SessionImages(this);
+    this.library = new SessionLibrary(this);
   }
 
   notify() {
@@ -40,13 +44,24 @@ export class SessionState extends EventTarget {
       .filter((item) => item?.isOpen);
   }
   get recentSessions() {
-    return recentSessions(this.summaries);
+    return recentSessions(this.savedSessions);
+  }
+  get savedSessions() {
+    return this.summaries.filter((item) => !this.temporary.has(item.id));
   }
   document(id) {
     return this.documents.get(id);
   }
-  workspace() {
-    return { order: [...this.order], activeId: this.activeId, counters: { ...this.counters } };
+  workspace(order = this.order, activeId = this.activeId, library = this.library.tree) {
+    const savedOrder = order.filter((id) => !this.temporary.has(id));
+    return {
+      order: savedOrder,
+      activeId: savedOrder.includes(activeId)
+        ? activeId
+        : (savedOrder.find((id) => id === this.lastSavedActive) ?? savedOrder[0] ?? null),
+      counters: { ...this.counters },
+      ...(library.folders.length ? { library: structuredClone(library) } : {}),
+    };
   }
   fail(error) {
     this.error = error.message || 'Browser storage is unavailable.';
@@ -68,6 +83,7 @@ export class SessionState extends EventTarget {
   async load() {
     this.summaries = await this.repository.list();
     const saved = await this.repository.getPreference('workspace');
+    this.library.load(saved);
     this.appearance = (await this.repository.getPreference('appearance')) ?? {
       theme: 'light',
       collapsed: false,
@@ -95,9 +111,12 @@ export class SessionState extends EventTarget {
     this.documents = new Map(structuredClone(backup.documents).map((doc) => [doc.id, doc]));
     this.summaries = structuredClone(backup.summaries);
     this.order = [...backup.workspace.order];
+    this.temporary.clear();
+    this.library.load(backup.workspace);
     this.counters = { 'markdown-editor': 0, ...backup.workspace.counters };
     this.appearance = structuredClone(backup.appearance);
     this.activeId = backup.workspace.activeId;
+    this.lastSavedActive = this.activeId;
     this.images.cache.clear();
     this.error = '';
     this.openingError = '';
@@ -108,7 +127,7 @@ export class SessionState extends EventTarget {
     return createSession(this, toolId, name, source, initial);
   }
 
-  async activate(id, recordView = true) {
+  async activate(id, recordView = true, persist = true) {
     if (this.busy) return false;
     if (this.activeId === id) {
       this.cancelNavigation();
@@ -129,7 +148,9 @@ export class SessionState extends EventTarget {
         );
       const summary = this.summaries.find((item) => item.id === id);
       if (!summary || this.busy) return false;
-      const lastViewedAt = recordView ? nextViewedAt(this.summaries) : summary.lastViewedAt;
+      const temporary = this.temporary.has(id);
+      const lastViewedAt =
+        recordView && !temporary ? nextViewedAt(this.savedSessions) : summary.lastViewedAt;
       this.documents.set(
         id,
         this.document(id) ?? {
@@ -145,7 +166,9 @@ export class SessionState extends EventTarget {
       );
       if (!summary.isOpen) this.order = [...this.order.filter((item) => item !== id), id];
       this.activeId = id;
-      this.persistWorkspace();
+      if (temporary) return true;
+      this.lastSavedActive = id;
+      if (persist) this.persistWorkspace();
       if (recordView || !summary.isOpen) {
         const access = this.repository.recordAccess(id, lastViewedAt);
         this.preferenceQueue = Promise.all([this.preferenceQueue, access])
@@ -169,13 +192,19 @@ export class SessionState extends EventTarget {
     if (this.busy) return;
     const document = this.document(id);
     if (!document || document.source === source) return;
+    const options = { ...document.options, analyzed: false };
+    delete options.rowHighlights;
     this.documents.set(id, {
       ...document,
       source,
       revision: document.revision + 1,
-      options: { ...document.options, analyzed: false },
+      options,
     });
-    this.touch(id);
+    this.touch(id, !this.temporary.has(id) || !!source.trim());
+  }
+
+  retainImportedSession(id) {
+    if (!this.busy && this.temporary.has(id)) this.touch(id);
   }
 
   fileName(id) {
@@ -207,11 +236,12 @@ export class SessionState extends EventTarget {
     )
       return;
     this.documents.set(id, { ...document, options: { ...document.options, ...options } });
-    this.touch(id);
+    this.touch(id, false);
   }
 
   rename(id, name) {
-    if (this.busy || !name?.trim()) return;
+    const current = this.summaries.find((item) => item.id === id);
+    if (this.busy || !current || !name?.trim() || current.name === name.trim()) return;
     this.summaries = this.summaries.map((item) =>
       item.id === id
         ? {
@@ -231,9 +261,26 @@ export class SessionState extends EventTarget {
     }
   }
 
-  touch(id) {
+  touch(id, promote = true) {
+    const temporary = this.temporary.has(id);
+    const lastViewedAt = temporary && promote ? nextViewedAt(this.savedSessions) : undefined;
+    if (temporary) {
+      if (!promote) {
+        this.notify();
+        return;
+      }
+      this.temporary.delete(id);
+      if (this.activeId === id) this.lastSavedActive = id;
+      this.persistWorkspace();
+    }
     this.summaries = this.summaries.map((item) =>
-      item.id === id ? { ...item, updatedAt: Date.now() } : item,
+      item.id === id
+        ? {
+            ...item,
+            updatedAt: Date.now(),
+            ...(lastViewedAt === undefined ? {} : { lastViewedAt }),
+          }
+        : item,
     );
     const summary = this.summaries.find((item) => item.id === id);
     if (summary && this.document(id))
@@ -249,8 +296,9 @@ export class SessionState extends EventTarget {
       ids.some((id) => !this.order.includes(id))
     )
       return;
+    const previous = this.workspace().order;
     this.order = [...ids];
-    this.persistWorkspace();
+    if (this.workspace().order.some((id, index) => id !== previous[index])) this.persistWorkspace();
     this.notify();
   }
 
@@ -269,11 +317,15 @@ export class SessionState extends EventTarget {
     const ids = [
       ...new Set(
         [this.activeId, extraSessionId].filter(
-          (id) => id && this.summaries.some((s) => s.id === id),
+          (id) => id && !this.temporary.has(id) && this.summaries.some((s) => s.id === id),
         ),
       ),
     ];
-    if (!ids.length) return Promise.resolve({ status: 'no-session', ids: [] });
+    if (!ids.length)
+      return Promise.resolve({
+        status: this.temporary.has(this.activeId) ? 'temporary' : 'no-session',
+        ids: [],
+      });
     this.manualSaveIds ??= new Set();
     for (const id of ids) this.manualSaveIds.add(id);
     if (this.manualSavePromise) return this.manualSavePromise;

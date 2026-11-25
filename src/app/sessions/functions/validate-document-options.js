@@ -1,4 +1,7 @@
+import { resultRowColors } from '../../shared/result-row-colors.js';
+
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
+const positiveIndex = /^[1-9]\d*$/;
 
 /** Validate newly introduced options before a backup can replace the live workspace. */
 export function validateDocumentOptions(document, invalid) {
@@ -20,6 +23,22 @@ export function validateDocumentOptions(document, invalid) {
     )
       invalid();
   }
+  if (
+    options.rowHighlights !== undefined &&
+    (!record(options.rowHighlights) ||
+      Object.entries(options.rowHighlights).some(
+        ([statement, rows]) =>
+          !positiveIndex.test(statement) ||
+          !record(rows) ||
+          Object.entries(rows).some(
+            ([line, color]) =>
+              !positiveIndex.test(line) ||
+              typeof color !== 'string' ||
+              !Object.hasOwn(resultRowColors, color),
+          ),
+      ))
+  )
+    invalid();
   if (options.unitTestOpen !== undefined && typeof options.unitTestOpen !== 'boolean') invalid();
   if (
     options.unitTestWidth !== undefined &&

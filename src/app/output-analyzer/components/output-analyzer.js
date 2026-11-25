@@ -141,6 +141,7 @@ export function createOutputAnalyzer(state, id) {
       const output = await exporter.run({
         result,
         customNames: structuredClone(doc().options.sheetNames ?? {}),
+        rowHighlights: structuredClone(doc().options.rowHighlights ?? {}),
       });
       if (!alive) return;
       if (output.issues.length) {
@@ -197,6 +198,7 @@ export function createOutputAnalyzer(state, id) {
     exportButton.disabled = exporting || !result || resultRevision !== doc().revision;
     exportButton.textContent = exporting ? 'Exporting…' : 'Export Excel';
     view.classList.toggle('stale-results', !!result && resultRevision !== doc().revision);
+    sheetsView.update();
     inspector?.setMode(doc().options.jsonDecodeMode);
   }
   update();

@@ -677,7 +677,7 @@ class TableController {
     }
     if (next >= this.model.rows.length * this.model.columns) {
       const r = this.model.rows.length;
-      this.operation('add-row');
+      this.operation('add-row', true);
       queueMicrotask(() => this.edit(r, 0, { editorPosition: 0 }));
     } else
       this.edit(Math.floor(next / this.model.columns), next % this.model.columns, {
@@ -700,11 +700,12 @@ class TableController {
     return true;
   }
 
-  operation(operation) {
+  operation(operation, preserveViewport = false) {
     if (this.reading || this.active?.view.composing) return;
     const { row = 0, column = 0 } = this.active ?? {};
     this.owner.outer.dispatch({
       changes: tableChange(this.model, operation, row, column),
+      effects: preserveViewport ? this.owner.preserveCellViewport(this.model.from) : [],
       annotations: isolateHistory.of('full'),
       userEvent: 'input',
     });

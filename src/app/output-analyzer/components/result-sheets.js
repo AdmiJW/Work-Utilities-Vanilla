@@ -1,13 +1,21 @@
 import { element, button, clear } from '../../shared/dom.js';
 import { icon } from '../../shared/icons.js';
-import { copyText } from '../../file-transfer/public-api.js';
+import { copyText, downloadFile, sanitizeFileName } from '../../file-transfer/public-api.js';
 import { createResultGrid } from './result-grid.js';
 import { renderStatementTable, renderDiagnostics } from './statement-tables.js';
 import { startInlineRename } from '../../shared/inline-rename.js';
-import { resultSheetNames, statementKeys } from '../functions/result-sheet-names.js';
+import {
+  resultSheetNames,
+  statementKeys,
+  sheetNameError,
+} from '../functions/result-sheet-names.js';
+import { resultSheetCsv, resultSheetMarkdown } from '../functions/export-result-sheet.js';
 import { createTableSearch } from './table-search.js';
 import { animateEnter, cancelMotion } from '../../shared/motion.js';
 import { actionMenu } from '../../shared/ui.js';
+import { resultRowColors } from '../../shared/result-row-colors.js';
+
+const noHighlights = Object.freeze({});
 
 export function createResultSheets(state, id, callbacks) {
   const doc = () => state.document(id);
@@ -18,6 +26,9 @@ export function createResultSheets(state, id, callbacks) {
   let grid = null;
   let searchView = null;
   let tabsSignature = '';
+  let endRename;
+  let statement = null;
+  let selectedLine = null;
   const renameActions = new Map();
   const tabs = element('div', {
     className: 'sheet-tabs',
@@ -35,6 +46,44 @@ export function createResultSheets(state, id, callbacks) {
     tabs,
     more,
   );
+  const nameError = element('p', {
+    id: `sheet-name-error-${id}`,
+    className: 'notice error sheet-name-error',
+    role: 'alert',
+    hidden: true,
+  });
+  const tabArea = element('div', { className: 'result-tab-area' }, strip, nameError);
+  const fresh = () => !!result && doc().revision === revision;
+  const colors = () =>
+    fresh() && statement
+      ? (doc().options.rowHighlights?.[statement.index] ?? noHighlights)
+      : noHighlights;
+  const highlight = actionMenu('Highlight row', () => [
+    ...Object.entries(resultRowColors).map(([color, fill]) => ({
+      label: element(
+        'span',
+        { className: 'row-highlight-option' },
+        element('span', {
+          className: 'row-highlight-swatch',
+          style: `background-color: #${fill}`,
+          'aria-hidden': 'true',
+        }),
+        color[0].toUpperCase() + color.slice(1),
+      ),
+      checked: colors()[selectedLine] === color,
+      action: () => highlightRow(color),
+    })),
+    {
+      label: 'Clear highlight',
+      disabled: !colors()[selectedLine],
+      action: () => highlightRow(null),
+    },
+  ]);
+  const markdown = button('Download Markdown', () =>
+    download('md', resultSheetMarkdown, 'text/markdown'),
+  );
+  const csv = button('Download CSV', () => download('csv', resultSheetCsv, 'text/csv'));
+  const actions = element('div', { className: 'result-actions' }, highlight, markdown, csv);
   const main = element(
     'div',
     { className: 'sheet-main', id: `result-panel-${id}` },
@@ -46,6 +95,44 @@ export function createResultSheets(state, id, callbacks) {
       element('p', {}, 'Open a TXT file or paste execution output, then select Analyze output.'),
     ),
   );
+
+  function download(extension, serialize, mime) {
+    if (!fresh() || !statement?.columns.length) return;
+    const name = resultSheetNames(result.statements, doc().options.sheetNames).get(statement.index);
+    downloadFile(
+      serialize(statement),
+      sanitizeFileName(`${state.fileName(id)}-${name}`, `.${extension}`),
+      `${mime};charset=utf-8`,
+    );
+  }
+
+  function highlightRow(color) {
+    if (!fresh() || !statement || selectedLine === null) return;
+    const rows = { ...colors() };
+    if (color) rows[selectedLine] = color;
+    else delete rows[selectedLine];
+    const rowHighlights = { ...doc().options.rowHighlights };
+    if (Object.keys(rows).length) rowHighlights[statement.index] = rows;
+    else delete rowHighlights[statement.index];
+    state.updateOptions(id, { rowHighlights });
+  }
+
+  function update() {
+    more.disabled = !fresh();
+    markdown.disabled = csv.disabled = !fresh() || !statement?.columns.length;
+    highlight.disabled = !fresh() || selectedLine === null;
+    highlight.title =
+      selectedLine === null
+        ? 'Select a data cell to highlight its row'
+        : `Highlight the row at source line ${selectedLine}`;
+    grid?.setHighlights(colors());
+  }
+
+  function selectCell(cell) {
+    selectedLine = cell.rowNumber;
+    callbacks.selected(cell);
+    update();
+  }
   function sheets() {
     const names = resultSheetNames(result.statements, doc().options.sheetNames);
     const list = result.statements
@@ -69,6 +156,7 @@ export function createResultSheets(state, id, callbacks) {
     const nextTabs = JSON.stringify(list.map(({ id, name, count }) => [id, name, count]));
     const activeSheet = document.activeElement?.dataset.sheetId;
     if (tabsSignature !== nextTabs) {
+      endRename?.();
       renameActions.clear();
       clear(
         tabs,
@@ -90,13 +178,16 @@ export function createResultSheets(state, id, callbacks) {
               id: `result-tab-${id}-${sheet.id}`,
               'aria-controls': main.id,
               'aria-selected': sheet.id === selectedSheet,
+              title: sheet.name,
               className: sheet.id === selectedSheet ? 'active' : '',
               dataset: { sheetId: sheet.id },
             },
           );
           if (sheet.statement) {
-            const rename = () =>
-              startInlineRename(
+            const rename = () => {
+              if (!fresh()) return;
+              endRename?.();
+              endRename = startInlineRename(
                 tab,
                 sheet.name,
                 (name) => {
@@ -106,8 +197,25 @@ export function createResultSheets(state, id, callbacks) {
                   });
                   render();
                 },
-                { label: 'Result sheet name' },
+                {
+                  label: 'Result sheet name',
+                  describedBy: nameError.id,
+                  validate: (name) =>
+                    sheetNameError(
+                      name,
+                      resultSheetNames(result.statements, doc().options.sheetNames),
+                      sheet.statement.index,
+                    ),
+                  onError: (error) => {
+                    nameError.textContent = error;
+                    nameError.hidden = !error;
+                  },
+                  finished: () => {
+                    endRename = null;
+                  },
+                },
               );
+            };
             tab.addEventListener('dblclick', rename);
             renameActions.set(sheet.id, rename);
           }
@@ -160,8 +268,11 @@ export function createResultSheets(state, id, callbacks) {
     searchView?.dispose();
     searchView = null;
     grid = null;
+    selectedLine = null;
     callbacks.changed();
     const selected = list.find((sheet) => sheet.id === selectedSheet);
+    statement = selected?.statement ?? null;
+    update();
     if (!selected) {
       clear(
         main,
@@ -181,7 +292,6 @@ export function createResultSheets(state, id, callbacks) {
       clear(main, renderDiagnostics(result.diagnostics));
       return;
     }
-    const statement = selected.statement;
     const header = element(
       'div',
       { className: 'statement-info' },
@@ -214,13 +324,18 @@ export function createResultSheets(state, id, callbacks) {
       },
     );
     searchView.count(statement.rows.length);
-    clear(main, header, searchView.element, host);
+    clear(
+      main,
+      header,
+      element('div', { className: 'result-controls' }, searchView.element, actions),
+      host,
+    );
     if (statement.columns.length)
       grid = createResultGrid(
         host,
         statement,
         doc().options.gridViews?.[selectedSheet],
-        callbacks.selected,
+        selectCell,
         callbacks.inspect,
         (view) =>
           state.updateOptions(id, {
@@ -228,6 +343,7 @@ export function createResultSheets(state, id, callbacks) {
           }),
         doc().options.tableSearches?.[searchKey] ?? '',
         (count) => searchView?.count(count),
+        colors(),
       );
     else
       host.append(
@@ -240,7 +356,8 @@ export function createResultSheets(state, id, callbacks) {
   }
   return {
     element: main,
-    tabs: strip,
+    tabs: tabArea,
+    update,
     setResult(value, sourceRevision) {
       result = value;
       revision = sourceRevision;
@@ -248,6 +365,7 @@ export function createResultSheets(state, id, callbacks) {
       render();
     },
     dispose() {
+      endRename?.();
       cancelMotion(main);
       grid?.dispose();
       searchView?.dispose();

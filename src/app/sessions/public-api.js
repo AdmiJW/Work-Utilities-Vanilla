@@ -7,3 +7,4 @@ export { createExportFilename } from './components/export-filename.js';
 export { WorkspaceRepository } from './adapters/workspace-repository.js';
 export { WorkspacePersistence } from './state/workspace-persistence.js';
 export { filePickersAvailable } from './adapters/file-connection.js';
+export { libraryPath, libraryFolderId, librarySubtree } from './functions/library-tree.js';

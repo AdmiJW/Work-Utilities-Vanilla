@@ -4,7 +4,7 @@ import { validateImageBlob } from '../../shared/image-data.js';
 
 /** Includes unsaved live drafts and cold retained sessions without changing the UI. */
 export async function snapshotWorkspace(state) {
-  const summaries = structuredClone(state.summaries),
+  const summaries = structuredClone(state.savedSessions),
     workspace = state.workspace(),
     appearance = structuredClone(state.appearance);
   const documents = await Promise.all(

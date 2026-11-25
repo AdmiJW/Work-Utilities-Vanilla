@@ -1,5 +1,6 @@
 import { validateBackupImages } from './backup-images.js';
 import { validateDocumentOptions } from './validate-document-options.js';
+import { validLibrary } from './library-tree.js';
 
 const toolIds = new Set(['sql-formatter', 'output-analyzer', 'markdown-editor']);
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
@@ -16,7 +17,7 @@ export function readWorkspaceBackup(text) {
   if (
     !record(value) ||
     value.format !== 'work-utilities-workspace' ||
-    ![1, 2].includes(value.schemaVersion)
+    ![1, 2, 3].includes(value.schemaVersion)
   )
     throw new Error('This is not a supported Work Utilities Vanilla workspace backup.');
   const invalid = () => {
@@ -74,6 +75,8 @@ export function readWorkspaceBackup(text) {
     validateDocumentOptions(item, invalid);
   }
   if (bodies.size !== ids.size) invalid();
+  if (value.schemaVersion === 3 && !validLibrary(value.workspace.library, ids)) invalid();
+  if (value.schemaVersion < 3 && value.workspace.library !== undefined) invalid();
   validateBackupImages(value, invalid);
   const { order, activeId, counters } = value.workspace;
   const openIds = value.summaries.filter((item) => item.isOpen).map((item) => item.id);
@@ -105,9 +108,11 @@ export function readWorkspaceBackup(text) {
 }
 
 export function createWorkspaceBackup(summaries, documents, workspace, appearance, images = []) {
+  const { library, ...workspaceMetadata } = workspace;
+  const organized = !!library?.folders.length;
   return {
     format: 'work-utilities-workspace',
-    schemaVersion: 2,
+    schemaVersion: organized ? 3 : 2,
     exportedAt: new Date().toISOString(),
     summaries: summaries.map((summary) => ({
       ...summary,
@@ -115,7 +120,7 @@ export function createWorkspaceBackup(summaries, documents, workspace, appearanc
     })),
     documents,
     images,
-    workspace,
+    workspace: organized ? workspace : workspaceMetadata,
     appearance,
   };
 }

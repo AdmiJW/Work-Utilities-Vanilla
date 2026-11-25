@@ -3,7 +3,8 @@ import ExcelJS from 'exceljs';
 import { readResultProjection } from './read-result-projection.js';
 import { parseOutputFile } from './parse-output-file.js';
 import { matchesTableSearch } from './matches-table-search.js';
-import { resultSheetNames, statementKeys } from './result-sheet-names.js';
+import { resultSheetNames, statementKeys, sheetNameError } from './result-sheet-names.js';
+import { resultSheetCsv, resultSheetMarkdown } from './export-result-sheet.js';
 import { prepareWorkbookSheets } from './prepare-workbook-sheets.js';
 import { writeExcelWorkbook } from '../adapters/write-excel-workbook.js';
 
@@ -79,6 +80,37 @@ describe('search and result labels', () => {
 });
 
 describe('Excel Tables and names', () => {
+  it('gives generated and legacy labels the same valid names as Excel', () => {
+    const long = 'x'.repeat(30) + '😀';
+    const statements = [long, long, 'reserved', 'another', "'" + 'a'.repeat(30) + "'middle'"].map(
+      (tableName, index) => ({
+        index: index + 1,
+        kind: 'SELECT',
+        tableName,
+        sql: `SELECT ${index};`,
+        columns: [],
+        rows: [],
+      }),
+    );
+    const keys = statementKeys(statements);
+    const custom = { [keys.get(3)]: 'History', [keys.get(4)]: '_Diagnostics' };
+    const labels = resultSheetNames(statements, custom);
+    expect([...labels.values()]).toEqual([
+      'x'.repeat(30),
+      'x'.repeat(27) + ' (2)',
+      'History (2)',
+      '_Diagnostics (2)',
+      'a'.repeat(30),
+    ]);
+    expect(
+      prepareWorkbookSheets({ statements, diagnostics: [] }, custom).map(({ name }) => name),
+    ).toEqual([...labels.values()]);
+    expect(sheetNameError('x'.repeat(32), labels, 4)).toContain('31');
+    expect(sheetNameError('invalid/name', labels, 4)).toContain('cannot contain');
+    expect(sheetNameError('_DIAGNOSTICS', labels, 4)).toContain('reserved');
+    expect(sheetNameError('HISTORY (2)', labels, 4)).toContain('already exists');
+  });
+
   it('exports real tables, literal text, metadata and a header-only empty result', async () => {
     const result = parseOutputFile(
       'SQL Statement Run: --1SELECT a,b FROM T;\n0001|=SUM(1,2)\nSQL Statement Run: --1SELECT a,b FROM T;\n0 rows affected\nSQL Statement Run: --1UPDATE T SET a=1;\n2 rows affected',
@@ -113,4 +145,27 @@ describe('Excel Tables and names', () => {
     expect(new Set(sheets.map((sheet) => sheet.name.toUpperCase())).size).toBe(sheets.length);
     expect(new Set(sheets[0].rows[6].map((name) => name.toUpperCase())).size).toBe(2);
   });
+});
+
+it('exports complete textual cell values with format-specific escaping', () => {
+  const statement = {
+    sql: 'SELECT [```], Pipe FROM T;',
+    columns: [{ name: 'Quoted' }, { name: 'A|B' }],
+    rows: [{ values: ['  001,"ok"\nnext ', '<b>x</b> | *raw* & `code`'] }],
+  };
+  expect(resultSheetCsv(statement)).toBe(
+    'Quoted,A|B\r\n"  001,""ok""\nnext ",<b>x</b> | *raw* & `code`\r\n',
+  );
+  expect(resultSheetMarkdown(statement)).toBe(
+    [
+      '````sql',
+      'SELECT [```], Pipe FROM T;',
+      '````',
+      '',
+      '| Quoted | A\\|B |',
+      '| --- | --- |',
+      '|   001,"ok"<br>next  | &lt;b&gt;x&lt;/b&gt; \\| \\*raw\\* &amp; \\`code\\` |',
+      '',
+    ].join('\n'),
+  );
 });

@@ -66,6 +66,51 @@ afterEach(async () => {
 });
 
 describe('workspace file persistence', () => {
+  it('commits folder transfers and recursive deletes while leaving temporary tabs out of files', async () => {
+    const { state, persistence } = await workspace();
+    const id = await state.create('markdown-editor', 'Evidence', '# One');
+    const other = await state.create('sql-formatter', 'Outside folder', 'SELECT 1;');
+    await state.activate(id);
+    const draft = await state.create('sql-formatter');
+    const file = fileHandle();
+    expect(await persistence.switches.saveAs(file.handle)).toBe(true);
+    const original = JSON.parse(file.text);
+    expect(original.schemaVersion).toBe(2);
+    expect(original.workspace.order).toEqual([id, other]);
+    expect(state.activeId).toBe(draft);
+    expect(await state.library.saveFolder(null, 'Project')).toBe(true);
+    const [project] = state.library.tree.folders;
+    expect(await state.library.saveFolder(project.id, 'Evidence')).toBe(true);
+    const [, evidence] = state.library.tree.folders;
+    expect(await state.library.saveFolder(project.id, 'evidence')).toBe(false);
+    expect(await state.library.move({ folderId: project.id }, evidence.id)).toBe(false);
+    expect(await state.library.saveFolder(project.id, 'Notes', evidence.id)).toBe(true);
+    expect(await state.library.move({ ids: [id] }, evidence.id)).toBe(true);
+    const organized = JSON.parse(file.text);
+    expect(organized.schemaVersion).toBe(3);
+    expect(organized.workspace.library.placements).toEqual({ [id]: evidence.id });
+    expect(organized.workspace.library.folders[1]).toMatchObject({
+      name: 'Notes',
+      parentId: project.id,
+    });
+    expect(await persistence.switches.reload(() => true)).toBe(true);
+    expect(state.order).toEqual([id, other]);
+    expect(state.library.tree).toEqual(organized.workspace.library);
+    state.updateSource(id, '# Keep through failure');
+    state.updateSource(other, 'SELECT 2;');
+    file.fail = true;
+    expect(await state.library.deleteFolder(project.id)).toBe(false);
+    expect(state.order).toEqual([id, other]);
+    expect(state.document(id).source).toBe('# Keep through failure');
+    expect(state.library.tree).toEqual(organized.workspace.library);
+    expect(JSON.parse(file.text)).toEqual(organized);
+    expect(await state.library.deleteFolder(project.id)).toBe(true);
+    const remaining = JSON.parse(file.text);
+    expect(remaining.schemaVersion).toBe(2);
+    expect(remaining.documents.map(({ source }) => source)).toEqual(['SELECT 2;']);
+    expect(remaining.workspace.order).toEqual([other]);
+  });
+
   it('opens a picked file directly after saving the Browser workspace and retains work on failure', async () => {
     const target = await workspace();
     await target.state.create('markdown-editor', 'From file', 'on disk');

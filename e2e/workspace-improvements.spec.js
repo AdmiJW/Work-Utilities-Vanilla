@@ -1,6 +1,36 @@
 import { test, expect } from '@playwright/test';
 import { runWorkspaceAction, openApp } from './helpers/application.js';
 import { enterSql, openFile, renameTab } from './helpers/workspace.js';
+import { derConcatTemplate } from '../src/app/sql-formatter/functions/der-concat-template.js';
+
+test('DER CONCAT template previews and copies the supplied SQL without editing the document', async ({
+  page,
+}) => {
+  await openApp(page);
+  await page.getByRole('button', { name: 'New SQL Formatter session', exact: true }).click();
+  await enterSql(page, 'SELECT keep_this_query;');
+  await page.evaluate(() => {
+    Object.defineProperty(navigator, 'clipboard', {
+      configurable: true,
+      value: {
+        writeText: async (text) => {
+          window.copiedTemplate = text;
+        },
+      },
+    });
+  });
+  await page.getByRole('button', { name: 'DER CONCAT template', exact: true }).click();
+  const dialog = page.getByRole('dialog', { name: 'DER CONCAT template', exact: true });
+  const preview = dialog.getByRole('textbox', { name: 'DER CONCAT SQL', exact: true });
+  await expect(preview).toHaveValue(derConcatTemplate);
+  await expect(preview).not.toBeEditable();
+  await dialog.getByRole('button', { name: 'Copy SQL', exact: true }).click();
+  expect(await page.evaluate(() => window.copiedTemplate)).toBe(derConcatTemplate);
+  await dialog.getByRole('button', { name: 'Close der concat template', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'SQL editor', exact: true })).toHaveText(
+    'SELECT keep_this_query;',
+  );
+});
 
 test('tab names, filenames and import adoption are independent; inline edits and menus work with keyboard', async ({
   page,

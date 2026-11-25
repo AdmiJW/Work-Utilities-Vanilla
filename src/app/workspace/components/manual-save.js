@@ -32,6 +32,7 @@ export function installManualSave(state, feedback) {
       error: result.error || 'Save failed. Retry save or export a backup.',
       busy: 'Wait for the current workspace operation to finish.',
       'no-session': 'No active session to save.',
+      temporary: 'Add content or name the tab to save it.',
     }[result.status];
     show(
       draft.valid === false ? `${text} ${draft.error}` : text,

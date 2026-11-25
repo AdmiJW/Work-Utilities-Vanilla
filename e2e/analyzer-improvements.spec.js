@@ -1,5 +1,6 @@
 import { test, expect } from '@playwright/test';
 import ExcelJS from 'exceljs';
+import { readFile } from 'node:fs/promises';
 import { openApp } from './helpers/application.js';
 import { openFile } from './helpers/workspace.js';
 
@@ -127,4 +128,101 @@ test('generic fallback retains every row, non-JSON messages are readable, notice
   await expect(page.getByRole('region', { name: 'Cell inspector', exact: true })).not.toContainText(
     /EndOfFileExpected|InvalidSymbol/,
   );
+});
+
+test('downloads the current full result and retains row colors in the grid and Excel', async ({
+  page,
+}, info) => {
+  await openApp(page);
+  await page
+    .getByRole('button', { name: 'New DER/DPR Output Analyzer session', exact: true })
+    .click();
+  const source = [first, second].join('\n');
+  await analyze(page, source);
+  const tabs = page.getByRole('tablist', { name: 'Result sheets', exact: true });
+  const sheet = tabs.locator('[data-sheet-id="1"]');
+  await sheet.dblclick();
+  const name = page.getByRole('textbox', { name: 'Result sheet name', exact: true });
+  for (const [invalid, message] of [
+    ['X'.repeat(32), '31 characters'],
+    ['Events (2)', 'already exists'],
+    ['_/test', 'cannot contain'],
+    ['History', 'reserved'],
+  ]) {
+    await name.fill(invalid);
+    await name.press('Enter');
+    await expect(page.getByRole('alert').filter({ hasText: message })).toBeVisible();
+  }
+  await name.press('Escape');
+  await expect(sheet).toContainText('Events');
+  const workbookName = 'A'.repeat(31);
+  await sheet.dblclick();
+  await name.fill(workbookName);
+  await name.press('Enter');
+  await expect(sheet).toHaveAttribute('title', workbookName);
+  const highlight = page.getByRole('button', { name: 'Highlight row', exact: true });
+  await expect(highlight).toBeDisabled();
+  const cell = (value) => page.getByRole('gridcell', { name: value, exact: true });
+  const row = (value) => page.getByRole('row').filter({ has: cell(value) });
+  await cell('001').click();
+  await highlight.press('Enter');
+  await page.getByRole('menuitemcheckbox', { name: 'Yellow', exact: true }).click();
+  await expect(row('001')).toHaveAttribute('style', /FFF4B8/i);
+  await cell('003').click();
+  await highlight.click();
+  await page.getByRole('menuitemcheckbox', { name: 'Green', exact: true }).click();
+  await expect(row('003')).toHaveAttribute('style', /D8F3DC/i);
+  const header = page.getByRole('columnheader', { name: 'Id', exact: true });
+  await header.click();
+  await header.click();
+  await expect(cell('003')).toBeVisible();
+  await expect(row('003')).toHaveAttribute('style', /D8F3DC/i);
+  await page.getByRole('searchbox', { name: 'Search this table' }).fill('Other message');
+  await expect(cell('001')).toHaveCount(0);
+
+  const download = async (label, file) => {
+    const pending = page.waitForEvent('download');
+    await page.getByRole('button', { name: label, exact: true }).click();
+    const saved = await pending;
+    const path = info.outputPath(file);
+    await saved.saveAs(path);
+    return { path, filename: saved.suggestedFilename() };
+  };
+  const csv = await download('Download CSV', 'result.csv');
+  expect(csv.filename).toBe(`Output Analyzer 01-${workbookName}.csv`);
+  expect(await readFile(csv.path, 'utf8')).toBe(
+    'Id,Message,Payload\r\n001,Packed item,"{""note"":""Box | fragile""}"\r\n002,Other message,"{""note"":""ordinary""}"\r\n003,box fragile,true\r\n',
+  );
+  const md = await download('Download Markdown', 'result.md');
+  expect(await readFile(md.path, 'utf8')).toContain(
+    'SELECT Id,Message,Payload FROM dbo.Events;\n```\n\n| Id | Message | Payload |\n| --- | --- | --- |\n| 001 | Packed item | {"note":"Box \\| fragile"} |',
+  );
+  const xlsx = await download('Export Excel', 'highlights.xlsx');
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.readFile(xlsx.path);
+  const excelSheet = workbook.getWorksheet(workbookName);
+  expect(excelSheet.getCell('A8').value).toBe('001');
+  expect(excelSheet.getCell('A8').fill.fgColor.argb).toBe('FFFFF4B8');
+  expect(excelSheet.getCell('C10').fill.fgColor.argb).toBe('FFD8F3DC');
+  expect(excelSheet.getCell('A9').fill).toMatchObject({ pattern: 'none' });
+
+  await tabs.locator('[data-sheet-id="2"]').click();
+  const secondCsv = await download('Download CSV', 'second.csv');
+  expect(await readFile(secondCsv.path, 'utf8')).toBe('Id\r\n004\r\n');
+  await sheet.click();
+  await page.getByRole('button', { name: 'Clear table search' }).click();
+  await expect(row('001')).toHaveAttribute('style', /FFF4B8/i);
+  await page.getByRole('button', { name: 'Close Output Analyzer 01', exact: true }).click();
+  await page.getByRole('button', { name: 'Reopen Output Analyzer 01', exact: true }).click();
+  await page.reload();
+  await expect(row('001')).toHaveAttribute('style', /FFF4B8/i);
+  await cell('001').click();
+  await highlight.click();
+  await page.getByRole('menuitem', { name: 'Clear highlight', exact: true }).click();
+  await expect(row('001')).not.toHaveAttribute('style', /FFF4B8/i);
+  await showInput(page);
+  await page.getByRole('textbox', { name: 'Execution output', exact: true }).fill(source + '\n');
+  await expect(page.getByRole('button', { name: 'Download CSV', exact: true })).toBeDisabled();
+  await page.getByRole('button', { name: 'Analyze output', exact: true }).click();
+  await expect(row('003')).not.toHaveAttribute('style', /D8F3DC/i);
 });

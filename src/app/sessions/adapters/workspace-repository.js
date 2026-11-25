@@ -64,11 +64,14 @@ export class WorkspaceRepository {
   }
   async commitLifecycle(...args) {
     if (this.mode !== 'file') return this.call('commitLifecycle', args);
-    const backend = this.backend,
-      before = backend.checkpoint();
+    const { backend, persistence } = this;
+    if (persistence.flushing) await persistence.flushing;
+    // Keep earlier edits in the rollback checkpoint even if the disk write fails.
+    await persistence.drain();
+    const before = backend.checkpoint();
     try {
       await backend.commitLifecycle(...args);
-      await this.persistence.commitStaged();
+      await persistence.commitStaged();
     } catch (error) {
       backend.rollback(before);
       throw error;
