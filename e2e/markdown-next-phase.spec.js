@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
-import { openApp } from './helpers/application.js';
-import { openFile } from './helpers/workspace.js';
+import { openApp, startSession } from './helpers/application.js';
+import { openFile, openMarkdownAction, runMarkdownAction } from './helpers/workspace.js';
 
 const input = (page) => page.locator('.markdown-host > .cm-editor > .cm-scroller > .cm-content');
 const text = (page) => input(page).evaluate((dom) => dom.cmTile.root.view.state.doc.toString());
@@ -419,15 +419,16 @@ test('view toggles persist per document, outline excludes HTML/code headings and
   const source =
     '# First\n\n## Second\n\n<div><h1>HTML heading</h1></div>\n\n```cs\npublic class Example { string Name = "value"; }\n```\n\n```bash\nif true; then echo "$HOME"; fi\n```\n\n```md\n# Code heading\n```\n\nLast';
   await markdown(page, source);
-  await expect(page.getByRole('button', { name: 'Line numbers', exact: true })).toHaveAttribute(
-    'aria-pressed',
+  await expect(await openMarkdownAction(page, 'Line numbers')).toHaveAttribute(
+    'aria-checked',
     'true',
   );
+  await page.keyboard.press('Escape');
   await expect(page.locator('.markdown-host > .cm-editor .cm-lineNumbers')).toBeVisible();
   await expect(page.locator('.md-outline')).toBeHidden();
-  await page.getByRole('button', { name: 'Table of contents', exact: true }).click();
+  await runMarkdownAction(page, 'Table of contents');
   await expect(page.locator('.md-outline-list button')).toHaveText(['First', 'Second']);
-  await page.getByRole('button', { name: 'Find', exact: true }).click();
+  await runMarkdownAction(page, 'Find');
   const outline = await page.locator('.md-outline').boundingBox(),
     find = await page.locator('.md-find-widget').boundingBox();
   expect(outline.y).toBeGreaterThanOrEqual(find.y + find.height);
@@ -454,21 +455,23 @@ test('view toggles persist per document, outline excludes HTML/code headings and
   const bash = page.locator('.md-code-line').filter({ hasText: 'if true;' });
   expect(await bash.locator('span[class]').count()).toBeGreaterThan(0);
   await page.getByRole('button', { name: 'Live Preview', exact: true }).click();
-  await page.getByRole('button', { name: 'Line numbers', exact: true }).click();
+  await runMarkdownAction(page, 'Line numbers');
   await page.keyboard.press('ControlOrMeta+S');
   await expect(page.locator('.save-status')).toHaveText('All changes saved');
   await page.reload();
-  await expect(page.getByRole('button', { name: 'Line numbers', exact: true })).toHaveAttribute(
-    'aria-pressed',
+  await expect(await openMarkdownAction(page, 'Line numbers')).toHaveAttribute(
+    'aria-checked',
     'false',
   );
+  await page.keyboard.press('Escape');
   await expect(page.locator('.md-outline')).toBeVisible();
   await page.screenshot({ path: info.outputPath('markdown-outline.png') });
   await page.getByRole('button', { name: 'New Markdown Editor session', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Line numbers', exact: true })).toHaveAttribute(
-    'aria-pressed',
+  await expect(await openMarkdownAction(page, 'Line numbers')).toHaveAttribute(
+    'aria-checked',
     'true',
   );
+  await page.keyboard.press('Escape');
   await expect(page.locator('.md-outline')).toBeHidden();
 });
 
@@ -478,7 +481,7 @@ test('outline clicks mark the exact nested heading across modes and hand off to 
   const short = '# First\n\n## Parent\n\n### Child';
   await page.setViewportSize({ width: 1280, height: 1400 });
   await markdown(page, short);
-  await page.getByRole('button', { name: 'Table of contents', exact: true }).click();
+  await runMarkdownAction(page, 'Table of contents');
   const list = page.getByRole('navigation', { name: 'Document headings' });
   const heading = (name) => list.getByRole('button', { name, exact: true });
   const modes = ['Live Preview', 'Source', 'Reading'];
@@ -511,6 +514,74 @@ test('outline clicks mark the exact nested heading across modes and hand off to 
     });
     await expect(heading('First')).toHaveAttribute('aria-current', 'location');
   }
+});
+
+test('the final contents entry stays visible with Find open and the toolbar can be hidden per session', async ({
+  page,
+}) => {
+  const headings = Array.from({ length: 36 }, (_, index) => `## Heading ${index + 1}`).join('\n\n');
+  await markdown(page, headings);
+  await page.setViewportSize({ width: 760, height: 480 });
+  const formatting = page.getByRole('toolbar', { name: 'Markdown formatting', exact: true });
+  await expect(formatting).toBeVisible();
+  await runMarkdownAction(page, 'Formatting toolbar');
+  await expect(formatting).toBeHidden();
+  await expect(page.getByRole('textbox', { name: 'Export filename', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Live Preview', exact: true })).toHaveAttribute(
+    'title',
+    'Live Preview',
+  );
+  await expect(page.getByRole('button', { name: 'Markdown actions', exact: true })).toBeVisible();
+  await runMarkdownAction(page, 'Table of contents');
+  await runMarkdownAction(page, 'Find');
+  await page.getByRole('button', { name: 'Toggle Replace', exact: true }).click();
+
+  const list = page.getByRole('navigation', { name: 'Document headings' });
+  const last = list.getByRole('button', { name: 'Heading 36', exact: true });
+  await list.evaluate((node) => (node.scrollTop = node.scrollHeight));
+  const bounds = await last.boundingBox();
+  const panel = await page.locator('.md-outline').boundingBox();
+  expect(bounds.y + bounds.height).toBeLessThanOrEqual(panel.y + panel.height);
+  await last.click();
+  await expect(last).toHaveAttribute('aria-current', 'location');
+
+  await page.keyboard.press('ControlOrMeta+s');
+  await expect(page.locator('.save-status')).toHaveText('All changes saved');
+  await page.reload();
+  await expect(await openMarkdownAction(page, 'Formatting toolbar')).toHaveAttribute(
+    'aria-checked',
+    'false',
+  );
+  await page.keyboard.press('Escape');
+  await expect(formatting).toBeHidden();
+  await startSession(page, 'Markdown Editor');
+  await expect(formatting).toBeVisible();
+});
+
+test('table row and column insertion preserve trailing break markup and undo', async ({ page }) => {
+  const original = '| A | B |\n| --- | --- |\n| first | final<br> |';
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await markdown(page, original);
+  const table = page.getByRole('table', { name: 'Markdown table' });
+  const last = table.getByRole('cell', { name: 'Row 2, column 2', exact: true });
+  await last.click();
+  const cell = page.getByRole('textbox', { name: 'Table row 2 column 2', exact: true });
+  await expect(cell).toBeFocused();
+  await cell.press('Tab');
+  await expect(
+    page.getByRole('textbox', { name: 'Table row 3 column 1', exact: true }),
+  ).toBeFocused();
+  await expect(table.getByRole('row')).toHaveCount(3);
+  expect(await text(page)).toContain('final<br>');
+  await page.keyboard.press('ControlOrMeta+z');
+  expect(await text(page)).toBe(original);
+
+  await last.click({ button: 'right' });
+  await page.getByRole('menuitem', { name: 'Add column', exact: true }).click();
+  await expect(table.getByRole('columnheader')).toHaveCount(3);
+  expect(await text(page)).toContain('final<br>');
+  expect(errors).toEqual([]);
 });
 
 test('inline HTML in table cells stays atomic through line-break projections and malformed HTML stays literal', async ({

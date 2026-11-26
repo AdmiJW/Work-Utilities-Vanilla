@@ -51,14 +51,17 @@ export class SessionRepository {
     return document ? structuredClone(document) : undefined;
   }
 
-  async save(summary, document, images = []) {
+  async save(summary, document, images = [], workspace) {
     if (!this.persistent) {
+      const body = structuredClone(document);
+      const preference = workspace && structuredClone(workspace);
       await this.images.save(document, images);
       this.memory.summaries.set(
         summary.id,
         preserveLatestView(structuredClone(summary), this.memory.summaries.get(summary.id)),
       );
-      this.memory.documents.set(document.id, structuredClone(document));
+      this.memory.documents.set(document.id, body);
+      if (preference) this.memory.preferences.set('workspace', preference);
       return;
     }
     await this.database.transaction(
@@ -66,10 +69,12 @@ export class SessionRepository {
       this.summaries,
       this.documents,
       this.images.table,
+      ...(workspace ? [this.preferences] : []),
       async () => {
         await this.images.save(document, images);
         await this.summaries.put(preserveLatestView(summary, await this.summaries.get(summary.id)));
         await this.documents.put(document);
+        if (workspace) await this.preferences.put({ key: 'workspace', value: workspace });
       },
     );
   }

@@ -56,6 +56,16 @@ body,
   gap: 10px;
   flex-shrink: 0;
 }
+.new-session-folder {
+  min-width: 0;
+  max-width: min(180px, 14vw);
+  white-space: nowrap;
+}
+.new-session-folder-path {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
 .save-status {
   display: flex;
   align-items: center;
@@ -236,6 +246,14 @@ input[aria-invalid='true'] {
   }
   .header-status {
     gap: 8px;
+  }
+  .new-session-folder {
+    width: 36px;
+    min-height: 36px;
+    padding: 0;
+  }
+  .new-session-folder-path {
+    display: none;
   }
   .tab-close {
     width: 32px;

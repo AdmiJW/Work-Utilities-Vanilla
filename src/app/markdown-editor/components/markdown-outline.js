@@ -98,7 +98,10 @@ export function createMarkdownOutline(owner, host, close) {
   };
   const search = host.querySelector('.md-find-overlay');
   const resize = new ResizeObserver(() => {
-    overlay.style.top = `${Math.max(8, (search?.getBoundingClientRect().height ?? 0) + 16)}px`;
+    overlay.style.setProperty(
+      '--md-outline-top',
+      `${search.getBoundingClientRect().height + 16}px`,
+    );
   });
   if (search) resize.observe(search);
   return {

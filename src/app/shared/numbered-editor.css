@@ -1,0 +1,44 @@
+.numbered-editor {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+.numbered-editor .cm-editor {
+  height: 100%;
+  color: var(--text);
+  background: var(--panel);
+  font:
+    13px 'Cascadia Code',
+    Consolas,
+    monospace;
+}
+.numbered-editor .cm-scroller {
+  overflow: auto;
+  font-family: inherit;
+  line-height: var(--editor-line-height, 23px);
+}
+.numbered-editor .cm-content {
+  padding-block: 12px;
+  caret-color: var(--text);
+}
+.numbered-editor .cm-line {
+  padding-inline: 10px;
+}
+.numbered-editor .cm-gutters {
+  border-color: var(--border);
+  background: var(--panel-raised);
+  color: var(--muted);
+}
+.numbered-editor .cm-lineNumbers .cm-gutterElement {
+  padding-inline: 7px;
+}
+.numbered-editor .cm-activeLine {
+  background: color-mix(in srgb, var(--accent) 7%, transparent);
+}
+.numbered-editor .cm-cursor {
+  border-left-color: var(--text);
+}
+.numbered-editor .cm-editor.cm-focused {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}

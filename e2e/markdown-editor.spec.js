@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { pathToFileURL } from 'node:url';
 import { runWorkspaceAction, openApp, moveWorkspaceToOfflineFile } from './helpers/application.js';
-import { openFile } from './helpers/workspace.js';
+import { openFile, openMarkdownAction, runMarkdownAction } from './helpers/workspace.js';
 import { createScreenshot, pasteOrDropScreenshot } from './helpers/screenshots.js';
 
 async function markdown(page, source = '') {
@@ -25,7 +25,7 @@ async function markdown(page, source = '') {
 }
 async function exported(page, info, name = 'note.md') {
   const pending = page.waitForEvent('download');
-  await page.getByRole('button', { name: 'Export Markdown', exact: true }).click();
+  await runMarkdownAction(page, 'Export Markdown');
   const path = info.outputPath(name);
   await (await pending).saveAs(path);
   return readFile(path, 'utf8');
@@ -124,7 +124,7 @@ test('embedded images export original bytes and remote resources never load', as
   await expect(page.getByText('Image unavailable offline: remote', { exact: true })).toBeVisible();
   const file = await createScreenshot(page, 'local.png');
   const choosing = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Add image', exact: true }).click();
+  await runMarkdownAction(page, 'Add image');
   await (await choosing).setFiles(file);
   await expect(page.locator('.md-image img')).toHaveCount(1);
   const value = await exported(page, info);
@@ -156,17 +156,15 @@ test('imports, persisted view settings and workspace transfer work offline', asy
     Buffer.from('# Replaced\n\n| a | b |\n| --- | --- |\n| x | y |\n'),
   );
   await page.getByRole('button', { name: 'Replace all', exact: true }).click();
-  await page.getByRole('button', { name: 'Wide', exact: true }).click();
+  await runMarkdownAction(page, 'Wide');
   await page.getByRole('button', { name: 'Reading', exact: true }).click();
   await moveWorkspaceToOfflineFile(page, info);
   await expect(page.getByRole('button', { name: 'Reading', exact: true })).toHaveAttribute(
     'aria-pressed',
     'true',
   );
-  await expect(page.getByRole('button', { name: 'Wide', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expect(await openMarkdownAction(page, 'Wide')).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
   await expect(page.getByRole('table', { name: 'Markdown table', exact: true })).toBeVisible();
   await page.setViewportSize({ width: 960, height: 600 });
   await page.getByRole('button', { name: 'Switch to dark theme', exact: true }).click();
@@ -223,7 +221,7 @@ test('image paste/drop is undoable and invalid images leave Markdown untouched',
   await expect(page.locator('.md-image img')).toHaveCount(1);
   const before = await exported(page, info, 'before.md');
   const choosing = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Add image', exact: true }).click();
+  await runMarkdownAction(page, 'Add image');
   await (
     await choosing
   ).setFiles({ name: 'bad.png', mimeType: 'image/png', buffer: Buffer.from('not an image') });
@@ -242,14 +240,14 @@ test('formatting, find/replace and session reload retain document state', async 
   await page.getByRole('button', { name: 'Bold', exact: true }).click();
   expect(await exported(page, info)).toContain('**hello**');
   await page.getByRole('button', { name: 'Source', exact: true }).click();
-  await page.getByRole('button', { name: 'Find', exact: true }).click();
+  await runMarkdownAction(page, 'Find');
   const search = page.getByRole('textbox', { name: 'Find', exact: true });
   await search.fill('world');
   await page.getByRole('button', { name: 'Toggle Replace', exact: true }).click();
   await page.getByRole('textbox', { name: 'Replace', exact: true }).fill('work');
   await page.getByRole('button', { name: 'Replace All', exact: true }).click();
   await page.getByRole('button', { name: 'Close Find', exact: true }).click();
-  await page.getByRole('button', { name: 'Wide', exact: true }).click();
+  await runMarkdownAction(page, 'Wide');
   const before = await exported(page, info, 'before.md');
   expect(before).toContain('work');
   await expect(page.getByText('All changes saved', { exact: true })).toBeVisible();
@@ -258,10 +256,8 @@ test('formatting, find/replace and session reload retain document state', async 
     'aria-pressed',
     'true',
   );
-  await expect(page.getByRole('button', { name: 'Wide', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  );
+  await expect(await openMarkdownAction(page, 'Wide')).toHaveAttribute('aria-checked', 'true');
+  await page.keyboard.press('Escape');
   expect(await exported(page, info, 'after.md')).toBe(before);
 });
 
@@ -278,7 +274,7 @@ test('image-heavy documents stay editable and import limits fail without changes
     ]),
   };
   let choosing = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Add image', exact: true }).click();
+  await runMarkdownAction(page, 'Add image');
   await (await choosing).setFiles(file);
   await expect(page.locator('.md-image img')).toHaveCount(1);
   const input = page.getByRole('textbox', { name: 'Markdown editor', exact: true });
@@ -288,7 +284,7 @@ test('image-heavy documents stay editable and import limits fail without changes
   expect(await exported(page, info)).toContain('After image');
   const before = await exported(page, info, 'before.md');
   choosing = page.waitForEvent('filechooser');
-  await page.getByRole('button', { name: 'Add image', exact: true }).click();
+  await runMarkdownAction(page, 'Add image');
   await (
     await choosing
   ).setFiles({ ...file, name: 'too-large.png', buffer: Buffer.alloc(5 * 1024 * 1024 + 1) });
@@ -324,7 +320,7 @@ test('table search, inline rendering and formatting undo work together', async (
   await page.getByRole('button', { name: 'Reading', exact: true }).click();
   await expect(page.locator('.md-link[data-url="https://example.com"]')).toBeVisible();
   await expect(page.locator('.md-link[data-url="https://first.example"]')).toHaveText('named');
-  await page.getByRole('button', { name: 'Find', exact: true }).click();
+  await runMarkdownAction(page, 'Find');
   await expect(page.getByRole('textbox', { name: 'Replace', exact: true })).toHaveCount(0);
 });
 

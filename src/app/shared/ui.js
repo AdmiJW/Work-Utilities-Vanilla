@@ -4,13 +4,14 @@ import { icon } from './icons.js';
 
 export const compactWorkspace = '(width < 1024px)';
 
-export function actionMenu(label, items, attributes = {}) {
+export function actionMenu(label, items, { iconName, ...attributes } = {}) {
   let close;
   const toggle = (event) => {
     if (trigger.getAttribute('aria-expanded') === 'true') close();
     else close = openContextMenu(event, items(), trigger, attributes['aria-label'] ?? label);
   };
-  const trigger = button([label, icon('down', 14)], toggle, {
+  const trigger = button(iconName ? icon(iconName, 18) : [label, icon('down', 14)], toggle, {
+    ...(iconName ? { 'aria-label': label, title: label } : {}),
     ...attributes,
     'aria-haspopup': 'menu',
     'aria-expanded': false,

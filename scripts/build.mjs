@@ -30,6 +30,7 @@ export async function buildApplication() {
     inspect: 'src/app/output-analyzer/workers/inspect.js',
     export: 'src/app/output-analyzer/workers/export.js',
     'unit-test': 'src/app/sql-formatter/workers/export-unit-test.js',
+    diff: 'src/app/diff-checker/workers/compare.js',
   };
   const workers = {};
   const inputs = new Set(Object.keys(application.metafile.inputs));

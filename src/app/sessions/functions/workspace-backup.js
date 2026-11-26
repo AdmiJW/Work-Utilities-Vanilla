@@ -1,8 +1,10 @@
 import { validateBackupImages } from './backup-images.js';
 import { validateDocumentOptions } from './validate-document-options.js';
 import { validLibrary } from './library-tree.js';
+import { tools } from '../../shared/tool-details.js';
 
-const toolIds = new Set(['sql-formatter', 'output-analyzer', 'markdown-editor']);
+const toolIds = new Set(Object.keys(tools));
+const requiredCounters = new Set(['sql-formatter', 'output-analyzer']);
 const record = (value) => value !== null && typeof value === 'object' && !Array.isArray(value);
 const time = (value) => Number.isFinite(value) && value >= 0;
 
@@ -77,6 +79,12 @@ export function readWorkspaceBackup(text) {
   if (bodies.size !== ids.size) invalid();
   if (value.schemaVersion === 3 && !validLibrary(value.workspace.library, ids)) invalid();
   if (value.schemaVersion < 3 && value.workspace.library !== undefined) invalid();
+  const { newSessionFolderId } = value.workspace;
+  if (newSessionFolderId !== undefined) {
+    if (typeof newSessionFolderId !== 'string') invalid();
+    if (!value.workspace.library?.folders.some(({ id }) => id === newSessionFolderId))
+      delete value.workspace.newSessionFolderId;
+  }
   validateBackupImages(value, invalid);
   const { order, activeId, counters } = value.workspace;
   const openIds = value.summaries.filter((item) => item.isOpen).map((item) => item.id);
@@ -88,7 +96,7 @@ export function readWorkspaceBackup(text) {
     (activeId !== null && !order.includes(activeId)) ||
     !record(counters) ||
     [...toolIds].some((id) =>
-      id === 'markdown-editor' && counters[id] === undefined
+      !requiredCounters.has(id) && counters[id] === undefined
         ? false
         : !Number.isSafeInteger(counters[id]) || counters[id] < 0,
     )

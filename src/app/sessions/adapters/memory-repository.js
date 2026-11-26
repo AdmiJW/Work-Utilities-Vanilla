@@ -35,7 +35,7 @@ export class MemoryRepository {
     const summary = this.summaries.get(id);
     if (summary) await this.saveSummary({ ...summary, isOpen: true, lastViewedAt });
   }
-  async save(summary, document, supplied = []) {
+  async save(summary, document, supplied = [], workspace) {
     const next = new Map(this.images),
       ids = new Set((document.unitTestImages ?? []).map((ref) => ref.id));
     for (const id of ids) {
@@ -50,10 +50,12 @@ export class MemoryRepository {
     for (const [id, image] of next)
       if (image.sessionId === document.id && !ids.has(id)) next.delete(id);
     const body = structuredClone(document),
-      metadata = preserveLatestView(structuredClone(summary), this.summaries.get(summary.id));
+      metadata = preserveLatestView(structuredClone(summary), this.summaries.get(summary.id)),
+      preference = workspace && structuredClone(workspace);
     this.documents.set(document.id, body);
     this.summaries.set(summary.id, metadata);
     this.images = next;
+    if (preference) this.preferences.set('workspace', preference);
   }
   async commitLifecycle(summaries, workspace, permanently) {
     const nextSummaries = new Map(this.summaries),

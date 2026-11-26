@@ -1,7 +1,7 @@
 import { test, expect } from '@playwright/test';
 import { readFile } from 'node:fs/promises';
 import { runWorkspaceAction, openApp } from './helpers/application.js';
-import { openFile } from './helpers/workspace.js';
+import { openFile, runMarkdownAction } from './helpers/workspace.js';
 import { createScreenshot } from './helpers/screenshots.js';
 
 const outer = (page) => page.locator('.markdown-host > .cm-editor > .cm-scroller > .cm-content');
@@ -260,7 +260,7 @@ test('break projections preserve source spelling through search, formatting, ima
   const original = `| A | B |\n| --- | --- |\n| before<BR />after<br/>![tiny](${url}) | \\<br> \`literal<br>code\` |`;
   await page.getByRole('button', { name: 'New Markdown Editor session', exact: true }).click();
   await openFile(page, 'Open Markdown', 'projection.md', Buffer.from(original));
-  await page.getByRole('button', { name: 'Find', exact: true }).click();
+  await runMarkdownAction(page, 'Find');
   await page.getByRole('textbox', { name: 'Find', exact: true }).fill('after');
   await page.getByRole('button', { name: 'Next match', exact: true }).click();
   await page.keyboard.press('Escape');

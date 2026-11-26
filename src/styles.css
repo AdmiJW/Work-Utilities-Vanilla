@@ -7,6 +7,7 @@
 @import './app/shared/dialog.css';
 @import './app/shared/workspace-controls.css';
 @import './app/shared/controls.css';
+@import './app/shared/numbered-editor.css';
 @import './app/sql-formatter/components/sql-formatter.css';
 @import './app/sql-formatter/components/unit-test-panel.css';
 @import './app/output-analyzer/components/output-analyzer.css';
@@ -15,6 +16,7 @@
 @import './app/output-analyzer/components/analyzer-layout.css';
 @import './app/output-analyzer/components/table-search.css';
 @import './app/markdown-editor/components/markdown-editor.css';
+@import './app/diff-checker/components/diff-checker.css';
 @import './app/shared/motion.css';
 
 [hidden] {

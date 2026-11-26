@@ -1,5 +1,6 @@
 import { element, button } from '../../shared/dom.js';
 import { icon } from '../../shared/icons.js';
+import { tools } from '../../shared/tool-details.js';
 
 export function createWorkspaceSidebar(state, openLibrary, navigate) {
   const sidebar = element('aside', { className: 'sidebar' });
@@ -13,9 +14,10 @@ export function createWorkspaceSidebar(state, openLibrary, navigate) {
         title: `New ${title} session`,
       },
     );
-  const sqlLink = toolLink('sql-formatter', 'SQL Formatter', 'code');
-  const analyzerLink = toolLink('output-analyzer', 'Output Analyzer', 'table');
-  const markdownLink = toolLink('markdown-editor', 'Markdown Editor', 'markdown');
+  const links = Object.entries(tools).map(([id, { title, icon }]) => [
+    id,
+    toolLink(id, title, icon),
+  ]);
   const savedCount = element('span', { className: 'saved-count' });
   const collapse = button(
     icon('collapse'),
@@ -30,7 +32,11 @@ export function createWorkspaceSidebar(state, openLibrary, navigate) {
       element('strong', { className: 'brand-name' }, 'Work Utilities'),
     ),
     element('div', { className: 'nav-section-label eyebrow' }, 'Tools'),
-    element('nav', { 'aria-label': 'Tools' }, sqlLink, analyzerLink, markdownLink),
+    element(
+      'nav',
+      { 'aria-label': 'Tools' },
+      links.map(([, link]) => link),
+    ),
     element(
       'div',
       { className: 'sidebar-bottom' },
@@ -57,9 +63,8 @@ export function createWorkspaceSidebar(state, openLibrary, navigate) {
       );
       collapse.replaceChildren(icon(state.appearance.collapsed ? 'expand' : 'collapse'));
       savedCount.textContent = String(state.savedSessions.length);
-      sqlLink.classList.toggle('active', state.activeSession?.toolId === 'sql-formatter');
-      analyzerLink.classList.toggle('active', state.activeSession?.toolId === 'output-analyzer');
-      markdownLink.classList.toggle('active', state.activeSession?.toolId === 'markdown-editor');
+      for (const [id, link] of links)
+        link.classList.toggle('active', state.activeSession?.toolId === id);
     },
   };
 }

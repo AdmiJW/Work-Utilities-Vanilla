@@ -10,6 +10,8 @@ export class SessionLibrary {
   constructor(state) {
     this.state = state;
     this.tree = emptyLibrary();
+    this.destinationId = null;
+    this.pendingPlacements = new Set();
   }
 
   load(workspace) {
@@ -17,10 +19,38 @@ export class SessionLibrary {
     this.tree = validLibrary(stored, new Set(this.state.savedSessions.map(({ id }) => id)))
       ? structuredClone(stored)
       : emptyLibrary();
+    this.destinationId = this.folder(workspace?.newSessionFolderId)?.id ?? null;
+    this.pendingPlacements.clear();
   }
 
   folder(id) {
     return this.tree.folders.find((folder) => folder.id === id);
+  }
+
+  setDestination(id) {
+    if (this.state.busy || (id !== null && !this.folder(id))) return false;
+    if (id === this.destinationId) return true;
+    return this.state.lifecycle.remove([], false, { tree: this.tree, destinationId: id });
+  }
+
+  placeNew(id) {
+    if (this.destinationId === null) return;
+    this.tree = {
+      ...this.tree,
+      placements: { ...this.tree.placements, [id]: this.destinationId },
+    };
+    this.pendingPlacements.add(id);
+  }
+
+  savePlacement({ summary, document, images }) {
+    if (!this.pendingPlacements.has(summary.id)) return;
+    const state = this.state;
+    return state.queueWorkspaceWrite(async () => {
+      // Publish the placement alongside its document. Other drafts may still be unsaved.
+      const workspace = state.workspace({ committedOnly: true, savingId: summary.id });
+      await state.repository.save(summary, document, images, workspace);
+      this.pendingPlacements.delete(summary.id);
+    });
   }
 
   nameError(parentId, name, exceptId) {

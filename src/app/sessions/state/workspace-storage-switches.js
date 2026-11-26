@@ -106,6 +106,7 @@ export class WorkspaceStorageSwitches {
           connection.baseline,
         );
         p.repository.use(backend, 'file');
+        p.state.library.pendingPlacements.clear();
         p.handle = handle;
         p.baseline = baseline;
         p.state.error = '';

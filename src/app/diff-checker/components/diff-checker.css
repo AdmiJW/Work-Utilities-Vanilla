@@ -1,0 +1,56 @@
+.diff-panes {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  flex: 1;
+  min-height: 0;
+}
+.diff-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.diff-pane + .diff-pane {
+  border-inline-start: 1px solid var(--border);
+}
+.diff-pane h2 {
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-raised);
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 600;
+}
+.diff-pane .cm-scroller {
+  overflow-x: scroll;
+}
+.diff-status {
+  color: var(--muted);
+  font-size: 12px;
+}
+.diff-status:empty {
+  display: none;
+}
+.numbered-editor .diff-removed {
+  background: var(--danger-soft);
+  box-shadow: inset 2px 0 var(--danger);
+}
+.numbered-editor .diff-added {
+  background: color-mix(in srgb, var(--success) 10%, var(--panel));
+  box-shadow: inset 2px 0 var(--success);
+}
+.diff-removed-text {
+  background: color-mix(in srgb, var(--danger) 22%, transparent);
+}
+.diff-added-text {
+  background: color-mix(in srgb, var(--success) 26%, transparent);
+}
+.diff-alignment-space {
+  background: repeating-linear-gradient(
+    -45deg,
+    var(--panel-raised),
+    var(--panel-raised) 4px,
+    var(--panel) 4px,
+    var(--panel) 8px
+  );
+}

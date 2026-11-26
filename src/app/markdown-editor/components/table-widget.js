@@ -253,7 +253,7 @@ class TableController {
   }
 
   edit(row, column, options = {}) {
-    if (this.reading || !this.dom.isConnected) return;
+    if (this.reading || !this.dom.isConnected || !this.cells[row]?.[column]) return;
     if (!options.vertical) this.goalColumn = undefined;
     if (this.active?.row === row && this.active.column === column) {
       if (options.selection)
@@ -677,8 +677,8 @@ class TableController {
     }
     if (next >= this.model.rows.length * this.model.columns) {
       const r = this.model.rows.length;
-      this.operation('add-row', true);
-      queueMicrotask(() => this.edit(r, 0, { editorPosition: 0 }));
+      if (this.operation('add-row', true))
+        queueMicrotask(() => this.edit(r, 0, { editorPosition: 0 }));
     } else
       this.edit(Math.floor(next / this.model.columns), next % this.model.columns, {
         selection: {
@@ -701,14 +701,17 @@ class TableController {
   }
 
   operation(operation, preserveViewport = false) {
-    if (this.reading || this.active?.view.composing) return;
+    if (this.reading || this.active?.view.composing) return false;
     const { row = 0, column = 0 } = this.active ?? {};
-    this.owner.outer.dispatch({
+    const outer = this.owner.outer;
+    const before = outer.state.doc;
+    outer.dispatch({
       changes: tableChange(this.model, operation, row, column),
       effects: preserveViewport ? this.owner.preserveCellViewport(this.model.from) : [],
-      annotations: isolateHistory.of('full'),
+      annotations: [allowHTML.of(true), isolateHistory.of('full')],
       userEvent: 'input',
     });
+    return outer.state.doc !== before;
   }
 }
 

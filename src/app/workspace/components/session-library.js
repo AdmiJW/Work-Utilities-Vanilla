@@ -61,42 +61,34 @@ function editFolder(state, parentId, folder) {
   input.select();
 }
 
-function openMovePicker(state, item, moved) {
+function openFolderPicker(
+  state,
+  { title, label, start, choose, excluded = new Set(), problem = () => '', same = () => false },
+) {
   const { library } = state;
-  const { tree } = library;
-  const movingFolder = library.folder(item.folderId);
-  const excluded = movingFolder ? librarySubtree(tree, movingFolder.id).folders : new Set();
-  const paths = item.ids?.map((id) => libraryPath(tree, libraryFolderId(tree, id))) ?? [];
-  const common = paths[0]?.filter((folder, index) =>
-    paths.every((path) => path[index]?.id === folder.id),
-  );
-  let location = movingFolder?.parentId ?? common?.at(-1)?.id ?? null;
+  let location = start;
   let saving = false;
   const trail = element('nav', { className: 'library-trail', 'aria-label': 'Destination path' });
   const list = element('div', { className: 'move-folders' });
   const error = element('p', { className: 'notice error', role: 'alert', hidden: true });
-  const dialog = openDialog('Move to folder', element('div', {}, trail, list, error), [
+  const dialog = openDialog(title, element('div', {}, trail, list, error), [
     { label: 'Cancel', action: (close) => close() },
     {
-      label: 'Move here',
+      label,
       primary: true,
       action: async (close) => {
         if (saving) return;
         saving = true;
-        move.disabled = true;
-        if (await library.move(item, location)) {
-          moved();
-          void close();
-        } else {
+        select.disabled = true;
+        if (await choose(location)) void close();
+        else {
           saving = false;
-          update(
-            state.error || library.moveError(item, location) || 'The item could not be moved.',
-          );
+          update(state.error || problem(location) || 'The destination could not be saved.');
         }
       },
     },
   ]);
-  const move = dialog.querySelector('footer button:last-child');
+  const select = dialog.querySelector('footer button:last-child');
   function navigate(id) {
     if (saving) return;
     location = id;
@@ -119,16 +111,66 @@ function openMovePicker(state, item, moved) {
           )
         : element('p', { className: 'hint' }, 'No subfolders here.'),
     );
-    const problem = library.moveError(item, location);
-    const unavailable = movingFolder
-      ? movingFolder.parentId === location
-      : item.ids.every((id) => libraryFolderId(library.tree, id) === location);
-    move.disabled = !!problem;
-    error.textContent = failure ?? (unavailable ? '' : problem);
+    const issue = problem(location);
+    select.disabled = !!issue;
+    error.textContent = failure ?? (same(location) ? '' : issue);
     error.hidden = !error.textContent;
   }
   update();
   trail.lastElementChild?.focus();
+}
+
+function openMovePicker(state, item, moved) {
+  const { library } = state;
+  const { tree } = library;
+  const movingFolder = library.folder(item.folderId);
+  const paths = item.ids?.map((id) => libraryPath(tree, libraryFolderId(tree, id))) ?? [];
+  const common = paths[0]?.filter((folder, index) =>
+    paths.every((path) => path[index]?.id === folder.id),
+  );
+  openFolderPicker(state, {
+    title: 'Move to folder',
+    label: 'Move here',
+    start: movingFolder ? movingFolder.parentId : (common?.at(-1)?.id ?? null),
+    excluded: movingFolder ? librarySubtree(tree, movingFolder.id).folders : new Set(),
+    problem: (location) => library.moveError(item, location),
+    same: (location) =>
+      movingFolder
+        ? movingFolder.parentId === location
+        : item.ids.every((id) => libraryFolderId(library.tree, id) === location),
+    choose: async (location) => {
+      if (!(await library.move(item, location))) return false;
+      moved();
+      return true;
+    },
+  });
+}
+
+export function createSessionFolderControl(state) {
+  const { library } = state;
+  const path = element('span', { className: 'new-session-folder-path' });
+  const control = button(
+    [icon('library'), path],
+    () =>
+      openFolderPicker(state, {
+        title: 'New session folder',
+        label: 'Use this folder',
+        start: library.destinationId,
+        choose: (id) => library.setDestination(id),
+      }),
+    { className: 'new-session-folder', 'aria-haspopup': 'dialog' },
+  );
+  return {
+    element: control,
+    update() {
+      const folders = libraryPath(library.tree, library.destinationId);
+      const label = `New session folder · ${[root, ...folders].map(({ name }) => name).join(' / ')}`;
+      path.textContent = folders.length ? folders.map(({ name }) => name).join(' / ') : root.name;
+      control.title = label;
+      control.setAttribute('aria-label', label);
+      control.disabled = state.persistence.needsReconnect;
+    },
+  };
 }
 
 export function openSessionLibrary(state) {

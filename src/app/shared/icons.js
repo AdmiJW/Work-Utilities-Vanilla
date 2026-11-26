@@ -32,6 +32,11 @@ import {
   SquareCode,
   Table2,
   Minus,
+  Diff,
+  Eye,
+  BookOpen,
+  SlidersHorizontal,
+  Ellipsis,
 } from 'lucide';
 
 const icons = {
@@ -67,6 +72,11 @@ const icons = {
   fence: SquareCode,
   insertTable: Table2,
   divider: Minus,
+  diff: Diff,
+  preview: Eye,
+  reading: BookOpen,
+  view: SlidersHorizontal,
+  more: Ellipsis,
 };
 
 export function icon(name, size = 16) {

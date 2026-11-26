@@ -3,7 +3,7 @@ export class SessionLifecycle {
     this.state = state;
   }
 
-  async remove(ids, permanently, { tree, saveIds = [] } = {}) {
+  async remove(ids, permanently, { tree, saveIds = [], destinationId } = {}) {
     const state = this.state;
     if (state.busy) return false;
     const targets = state.summaries.filter(
@@ -33,6 +33,23 @@ export class SessionLifecycle {
       };
     const toSave = state.repository.mode === 'file' ? [] : [...saveIds];
     if (!permanently) toSave.push(...savedTargets.map(({ id }) => id));
+    const apply = () => {
+      state.library.tree = library;
+      state.library.destinationId =
+        state.library.folder(
+          destinationId === undefined ? state.library.destinationId : destinationId,
+        )?.id ?? null;
+      state.summaries = state.summaries
+        .filter(({ id }) => !(removed.has(id) && (permanently || state.temporary.has(id))))
+        .map((item) => (removed.has(item.id) ? { ...item, isOpen: false } : item));
+      state.order = order;
+      for (const id of removed) {
+        state.documents.delete(id);
+        state.temporary.delete(id);
+        state.library.pendingPlacements.delete(id);
+      }
+      state.images.release([...removed]);
+    };
     try {
       if (!(await Promise.all(toSave.map((id) => state.autosave.flush(id)))).every(Boolean))
         throw new Error(
@@ -42,23 +59,20 @@ export class SessionLifecycle {
         );
       if (savedTargets.length || tree) {
         await state.autosave.discard(savedTargets.map(({ id }) => id));
-        await state.preferenceQueue;
-        await state.repository.commitLifecycle(
-          savedTargets,
-          state.workspace(order, activeId, library),
-          permanently,
-        );
-      }
-      state.library.tree = library;
-      state.summaries = state.summaries
-        .filter(({ id }) => !(removed.has(id) && (permanently || state.temporary.has(id))))
-        .map((item) => (removed.has(item.id) ? { ...item, isOpen: false } : item));
-      state.order = order;
-      for (const id of removed) {
-        state.documents.delete(id);
-        state.temporary.delete(id);
-      }
-      state.images.release([...removed]);
+        const commit = async (committedOnly) => {
+          await state.repository.commitLifecycle(
+            savedTargets,
+            state.workspace({ order, activeId, library, destinationId, committedOnly }),
+            permanently,
+          );
+          apply();
+        };
+        if (state.repository.mode === 'file') {
+          await state.preferenceQueue;
+          // The File repository drains staging first, then writes the complete workspace.
+          await commit(false);
+        } else await state.queueWorkspaceWrite(() => commit(true));
+      } else apply();
       state.busy = false;
       if (activeId !== previousActive) {
         state.activeId = null;

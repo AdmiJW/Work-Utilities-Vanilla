@@ -1,6 +1,6 @@
 import { test, expect } from '@playwright/test';
 import { runWorkspaceAction, openApp } from './helpers/application.js';
-import { openFile } from './helpers/workspace.js';
+import { openFile, runMarkdownAction } from './helpers/workspace.js';
 
 async function openMarkdown(page, source) {
   await openApp(page);
@@ -162,17 +162,17 @@ test('Find toggles, preserves query, supports replacement and keeps editor geome
     .locator('.markdown-host .cm-line')
     .filter({ hasText: 'alpha ALPHA' })
     .boundingBox();
-  const trigger = page.getByRole('button', { name: 'Find', exact: true });
-  await trigger.click();
+  const toggleFind = () => runMarkdownAction(page, 'Find');
+  await toggleFind();
   const input = page.getByRole('textbox', { name: 'Find', exact: true });
   await input.fill('alpha');
   await expect(page.locator('.md-find-count')).toHaveText('4 matches');
   await page.getByRole('button', { name: 'Match case', exact: true }).click();
   await page.getByRole('button', { name: 'Whole word', exact: true }).click();
   await expect(page.locator('.md-find-count')).toHaveText('2 matches');
-  await trigger.click();
+  await toggleFind();
   await expect(input).toHaveCount(0);
-  await trigger.click();
+  await toggleFind();
   await expect(input).toHaveValue('alpha');
   const after = await page
     .locator('.markdown-host .cm-line')
@@ -188,7 +188,7 @@ test('Find toggles, preserves query, supports replacement and keeps editor geome
   await expect(page.getByRole('textbox', { name: 'Markdown editor', exact: true })).toBeFocused();
   await page.keyboard.press('ControlOrMeta+Z');
   expect(await source(page)).toContain('alpha ALPHA alphabet alpha');
-  await trigger.click();
+  await toggleFind();
   await page.screenshot({ path: info.outputPath('find-widget.png') });
 });
 
@@ -315,7 +315,7 @@ test('Find supports keyboard seeding, regex feedback, capped counts and Reading 
   await page.keyboard.press('ControlOrMeta+h');
   await expect(page.getByRole('textbox', { name: 'Replace', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Reading', exact: true }).click();
-  await page.getByRole('button', { name: 'Find', exact: true }).click();
+  await runMarkdownAction(page, 'Find');
   await expect(field).toHaveValue('needle');
   await expect(page.getByRole('textbox', { name: 'Replace', exact: true })).toHaveCount(0);
   await page.setViewportSize({ width: 760, height: 560 });

@@ -66,6 +66,78 @@ afterEach(async () => {
 });
 
 describe('workspace file persistence', () => {
+  it('commits new folder placements with their Browser documents and preserves placement through retries', async () => {
+    const { state, browser, repository } = await workspace();
+    const outside = await state.create('sql-formatter', 'Existing', 'SELECT 1;');
+    const draft = await state.create('diff-checker');
+    await state.library.saveFolder(null, 'Projects');
+    const [project] = state.library.tree.folders;
+    await state.library.saveFolder(project.id, 'Notes');
+    const [, notes] = state.library.tree.folders;
+    expect(await state.library.setDestination(notes.id)).toBe(true);
+    state.updateDiffText(draft, '', 'only on the right');
+    expect(state.library.tree.placements).toEqual({ [draft]: notes.id });
+
+    expect(await state.library.setDestination(project.id)).toBe(true);
+    const other = await state.create('json-formatter');
+    state.updateSource(other, '{}');
+    vi.spyOn(browser.documents, 'put').mockRejectedValueOnce(new Error('Browser write failed'));
+    expect(await state.autosave.flush(draft)).toBe(false);
+    expect(await browser.read(draft)).toBeUndefined();
+    const before = await browser.getPreference('workspace');
+    expect(before.library.placements).toEqual({});
+    expect(before.order).toEqual([outside]);
+
+    state.updateSource(outside, 'SELECT 2;');
+    await state.activate(draft);
+    const saves = await Promise.all([
+      state.autosave.flush(draft),
+      state.autosave.flush(other),
+      state.autosave.flush(outside),
+      state.library.saveFolder(project.id, 'Renamed', notes.id),
+    ]);
+    expect(saves).toEqual([true, true, true, true]);
+    const reloaded = new SessionState(repository);
+    await reloaded.initialize();
+    await reloaded.preferenceQueue;
+    expect(reloaded.library.destinationId).toBe(project.id);
+    expect(reloaded.library.tree.placements).toEqual({ [draft]: notes.id, [other]: project.id });
+    expect(reloaded.library.folder(notes.id).name).toBe('Renamed');
+    expect((await browser.read(draft)).options.rightText).toBe('only on the right');
+    expect((await browser.read(outside)).source).toBe('SELECT 2;');
+  });
+
+  it('carries the file save destination through retry, backup and restore and resets it on deletion', async () => {
+    const { state, persistence } = await workspace();
+    const file = fileHandle();
+    expect(await persistence.switches.saveAs(file.handle)).toBe(true);
+    expect(await state.library.saveFolder(null, 'Work')).toBe(true);
+    const [folder] = state.library.tree.folders;
+    expect(await state.library.setDestination(folder.id)).toBe(true);
+    const id = await state.create('json-formatter');
+    state.updateOptions(id, { indentWidth: 6 });
+    state.updateSource(id, '{"test":true}');
+    file.fail = true;
+    expect(await persistence.flush()).toBe(false);
+    expect(JSON.parse(file.text).documents).toEqual([]);
+    expect(state.library.tree.placements[id]).toBe(folder.id);
+    expect(await persistence.flush()).toBe(true);
+    const backups = new WorkspaceBackups(state);
+    const backup = await backups.export();
+    expect(backup.workspace.newSessionFolderId).toBe(folder.id);
+    expect(backup.workspace.library.placements).toEqual({ [id]: folder.id });
+    expect(await persistence.switches.reload(() => true)).toBe(true);
+    expect(state.library.destinationId).toBe(folder.id);
+    expect(state.document(id).options.indentWidth).toBe(6);
+
+    expect(await state.library.deleteFolder(folder.id)).toBe(true);
+    expect(state.library.destinationId).toBeNull();
+    expect(JSON.parse(file.text).workspace).not.toHaveProperty('newSessionFolderId');
+    expect(await backups.restore(backup)).toBe(true);
+    expect(state.library.destinationId).toBe(folder.id);
+    expect(state.library.tree.placements).toEqual({ [id]: folder.id });
+  });
+
   it('commits folder transfers and recursive deletes while leaving temporary tabs out of files', async () => {
     const { state, persistence } = await workspace();
     const id = await state.create('markdown-editor', 'Evidence', '# One');

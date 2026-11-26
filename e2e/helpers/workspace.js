@@ -40,7 +40,22 @@ async function dropFiles(page, target, files, surface = target) {
 async function openFile(page, button, name, buffer) {
   const chooser = page.waitForEvent('filechooser');
   if (button === 'Import workspace') await runWorkspaceAction(page, button);
+  else if (button === 'Open Markdown') await runMarkdownAction(page, button);
   else await page.getByRole('button', { name: button, exact: true }).click();
   await (await chooser).setFiles({ name, mimeType: 'text/plain', buffer });
 }
-export { dropFiles, enterSql, openFile, readSql, renameTab };
+
+async function openMarkdownAction(page, name) {
+  const checkable = ['Line numbers', 'Table of contents', 'Wide', 'Formatting toolbar'];
+  const menu = checkable.includes(name) || name === 'Find' ? 'View' : 'Markdown actions';
+  await page.getByRole('button', { name: menu, exact: true }).click();
+  return page
+    .getByRole('menu', { name: menu, exact: true })
+    .getByRole(checkable.includes(name) ? 'menuitemcheckbox' : 'menuitem', { name, exact: true });
+}
+
+async function runMarkdownAction(page, name) {
+  await (await openMarkdownAction(page, name)).click();
+}
+
+export { dropFiles, enterSql, openFile, openMarkdownAction, readSql, renameTab, runMarkdownAction };

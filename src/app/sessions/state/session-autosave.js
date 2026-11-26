@@ -1,8 +1,9 @@
 /** Serializes writes and drains revisions before closing a session. */
 export class SessionAutosave {
-  constructor(repository, changed) {
+  constructor(repository, changed, savePlacement) {
     this.repository = repository;
     this.changed = changed;
+    this.savePlacement = savePlacement;
     this.pending = new Map();
     this.timers = new Map();
     this.queues = new Map();
@@ -45,7 +46,9 @@ export class SessionAutosave {
           while (this.pending.has(key)) {
             const snapshot = this.pending.get(key);
             try {
-              if (snapshot.images.length)
+              const placement = this.savePlacement?.(snapshot);
+              if (placement) await placement;
+              else if (snapshot.images.length)
                 await this.repository.save(snapshot.summary, snapshot.document, snapshot.images);
               else await this.repository.save(snapshot.summary, snapshot.document);
               if (this.pending.get(key)?.revision === snapshot.revision) this.pending.delete(key);

@@ -5,6 +5,7 @@ import { nextViewedAt, recentSessions } from '../functions/session-recency.js';
 import { SessionImages } from './session-images.js';
 import { normalizeBaseName, sessionFileName } from '../functions/session-filename.js';
 import { SessionLibrary } from './session-library.js';
+import { emptyToolCounters } from '../../shared/tool-details.js';
 
 export class SessionState extends EventTarget {
   constructor(repository) {
@@ -15,7 +16,7 @@ export class SessionState extends EventTarget {
     this.order = [];
     this.temporary = new Set();
     this.lastSavedActive = null;
-    this.counters = { 'sql-formatter': 0, 'output-analyzer': 0, 'markdown-editor': 0 };
+    this.counters = emptyToolCounters();
     this.activeId = null;
     this.openingId = null;
     this.openingError = '';
@@ -26,10 +27,14 @@ export class SessionState extends EventTarget {
     this.generation = 0;
     this.appearance = { theme: 'light', collapsed: false };
     this.preferenceQueue = Promise.resolve();
-    this.autosave = new SessionAutosave(repository, () => this.notify());
     this.lifecycle = new SessionLifecycle(this);
     this.images = new SessionImages(this);
     this.library = new SessionLibrary(this);
+    this.autosave = new SessionAutosave(
+      repository,
+      () => this.notify(),
+      (snapshot) => this.library.savePlacement(snapshot),
+    );
   }
 
   notify() {
@@ -52,16 +57,35 @@ export class SessionState extends EventTarget {
   document(id) {
     return this.documents.get(id);
   }
-  workspace(order = this.order, activeId = this.activeId, library = this.library.tree) {
-    const savedOrder = order.filter((id) => !this.temporary.has(id));
-    return {
+  workspace({
+    order = this.order,
+    activeId = this.activeId,
+    library = this.library.tree,
+    destinationId = this.library.destinationId,
+    committedOnly = false,
+    savingId,
+  } = {}) {
+    const uncommitted = (id) =>
+      committedOnly && id !== savingId && this.library.pendingPlacements.has(id);
+    const savedOrder = order.filter((id) => !this.temporary.has(id) && !uncommitted(id));
+    const snapshot = {
       order: savedOrder,
       activeId: savedOrder.includes(activeId)
         ? activeId
         : (savedOrder.find((id) => id === this.lastSavedActive) ?? savedOrder[0] ?? null),
       counters: { ...this.counters },
-      ...(library.folders.length ? { library: structuredClone(library) } : {}),
     };
+    if (library.folders.length) {
+      snapshot.library = {
+        folders: structuredClone(library.folders),
+        placements: Object.fromEntries(
+          Object.entries(library.placements).filter(([id]) => !uncommitted(id)),
+        ),
+      };
+      if (library.folders.some(({ id }) => id === destinationId))
+        snapshot.newSessionFolderId = destinationId;
+    }
+    return snapshot;
   }
   fail(error) {
     this.error = error.message || 'Browser storage is unavailable.';
@@ -90,12 +114,7 @@ export class SessionState extends EventTarget {
     };
     const open = this.summaries.filter((item) => item.isOpen).map((item) => item.id);
     this.order = [...new Set([...(saved?.order ?? []).filter((id) => open.includes(id)), ...open])];
-    this.counters = {
-      'sql-formatter': 0,
-      'output-analyzer': 0,
-      'markdown-editor': 0,
-      ...saved?.counters,
-    };
+    this.counters = { ...emptyToolCounters(), ...saved?.counters };
     const activeId = this.order.includes(saved?.activeId) ? saved.activeId : this.order[0];
     if (activeId) await this.activate(activeId);
   }
@@ -113,7 +132,7 @@ export class SessionState extends EventTarget {
     this.order = [...backup.workspace.order];
     this.temporary.clear();
     this.library.load(backup.workspace);
-    this.counters = { 'markdown-editor': 0, ...backup.workspace.counters };
+    this.counters = { ...emptyToolCounters(), ...backup.workspace.counters };
     this.appearance = structuredClone(backup.appearance);
     this.activeId = backup.workspace.activeId;
     this.lastSavedActive = this.activeId;
@@ -203,6 +222,23 @@ export class SessionState extends EventTarget {
     this.touch(id, !this.temporary.has(id) || !!source.trim());
   }
 
+  updateDiffText(id, source, rightText) {
+    if (this.busy) return;
+    const document = this.document(id);
+    if (
+      !document ||
+      (document.source === source && (document.options.rightText ?? '') === rightText)
+    )
+      return;
+    this.documents.set(id, {
+      ...document,
+      source,
+      revision: document.revision + 1,
+      options: { ...document.options, rightText },
+    });
+    this.touch(id, !!(source.trim() || rightText.trim()));
+  }
+
   retainImportedSession(id) {
     if (!this.busy && this.temporary.has(id)) this.touch(id);
   }
@@ -270,6 +306,7 @@ export class SessionState extends EventTarget {
         return;
       }
       this.temporary.delete(id);
+      this.library.placeNew(id);
       if (this.activeId === id) this.lastSavedActive = id;
       this.persistWorkspace();
     }
@@ -363,12 +400,20 @@ export class SessionState extends EventTarget {
     return this.lifecycle.remove(ids, true);
   }
 
+  queueWorkspaceWrite(write) {
+    const task = this.preferenceQueue.then(write);
+    this.preferenceQueue = task.catch(() => {});
+    return task;
+  }
+
   persistWorkspace() {
-    const snapshot = this.workspace();
-    this.preferenceQueue = this.preferenceQueue
-      .then(() => this.repository.setPreference('workspace', snapshot))
-      .catch((error) => this.fail(error));
-    return this.preferenceQueue;
+    return this.queueWorkspaceWrite(async () => {
+      try {
+        await this.repository.setPreference('workspace', this.workspace({ committedOnly: true }));
+      } catch (error) {
+        this.fail(error);
+      }
+    });
   }
 
   setAppearance(changes) {

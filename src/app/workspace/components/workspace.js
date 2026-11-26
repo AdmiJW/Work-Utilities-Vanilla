@@ -6,11 +6,13 @@ import { backgroundStatus } from '../../shared/background-task.js';
 import { createSqlFormatter } from '../../sql-formatter/public-api.js';
 import { createOutputAnalyzer } from '../../output-analyzer/public-api.js';
 import { createMarkdownTool } from '../../markdown-editor/public-api.js';
+import { createDiffChecker } from '../../diff-checker/public-api.js';
+import { createJsonFormatter } from '../../json-formatter/public-api.js';
 import { applyAppearance } from '../../appearance/public-api.js';
 import { downloadApplication, openCompatibility } from '../../portable-app/public-api.js';
 import { createSessionTabs } from './session-tabs.js';
 import { renderWorkspaceHome } from './workspace-home.js';
-import { openSessionLibrary } from './session-library.js';
+import { createSessionFolderControl, openSessionLibrary } from './session-library.js';
 import { openDebugDialog } from './debug-dialog.js';
 import { installManualSave } from './manual-save.js';
 import { animateEnter, cancelMotion } from '../../shared/motion.js';
@@ -31,6 +33,7 @@ export function mountWorkspace(root, state, lock) {
   };
   const { backup, restore } = createWorkspaceBackupActions(state);
   const storage = createWorkspaceStorage(state, backup);
+  const sessionFolder = createSessionFolderControl(state);
   const sidebar = createWorkspaceSidebar(state, openLibrary, (action) => {
     if (!drawer?.open) return action();
     drawer.addEventListener('close', action, { once: true });
@@ -85,6 +88,7 @@ export function mountWorkspace(root, state, lock) {
     element(
       'div',
       { className: 'header-status' },
+      sessionFolder.element,
       storage.element,
       saveStatus,
       theme,
@@ -168,6 +172,7 @@ export function mountWorkspace(root, state, lock) {
     );
     clear(theme, icon(state.appearance.theme === 'dark' ? 'sun' : 'moon'));
     sidebar.update();
+    sessionFolder.update();
     storage.update();
     sidebar.element.inert = state.busy || state.persistence.needsReconnect;
     navigation.disabled = state.persistence.needsReconnect;
@@ -265,6 +270,8 @@ export function mountWorkspace(root, state, lock) {
         'sql-formatter': createSqlFormatter,
         'output-analyzer': createOutputAnalyzer,
         'markdown-editor': createMarkdownTool,
+        'diff-checker': createDiffChecker,
+        'json-formatter': createJsonFormatter,
       }[active.toolId];
       const view = factory(state, active.id);
       views.set(active.id, view);
@@ -278,16 +285,20 @@ export function mountWorkspace(root, state, lock) {
       panel.setAttribute('aria-labelledby', `tab-${active.id}`);
       const document = state.document(active.id);
       if (counts.get(active.id)?.revision !== document.revision) {
-        let lines = 1;
-        for (
-          let p = document.source.indexOf('\n');
-          p !== -1;
-          p = document.source.indexOf('\n', p + 1)
-        )
-          lines++;
-        counts.set(active.id, { revision: document.revision, lines });
+        const sources =
+          active.toolId === 'diff-checker'
+            ? [document.source, document.options.rightText ?? '']
+            : [document.source];
+        let lines = sources.length,
+          characters = 0;
+        for (const source of sources) {
+          for (let p = source.indexOf('\n'); p !== -1; p = source.indexOf('\n', p + 1)) lines++;
+          characters += source.length;
+        }
+        counts.set(active.id, { revision: document.revision, lines, characters });
       }
-      footerInfo.textContent = `${counts.get(active.id).lines.toLocaleString()} lines · ${document.source.length.toLocaleString()} characters`;
+      const { lines, characters } = counts.get(active.id);
+      footerInfo.textContent = `${lines.toLocaleString()} lines · ${characters.toLocaleString()} characters`;
       for (const id of counts.keys()) if (!state.documents.has(id)) counts.delete(id);
     } else {
       panel.removeAttribute('role');

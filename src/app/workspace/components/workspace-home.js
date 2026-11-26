@@ -12,6 +12,8 @@ export function renderWorkspaceHome(state, openLibrary) {
         ['sql-formatter', 'Format, edit, and export Transact-SQL scripts.'],
         ['output-analyzer', 'Inspect execution results and export Excel workbooks.'],
         ['markdown-editor', 'Write and preview Markdown in one editor.'],
+        ['diff-checker', 'Compare two texts side by side.'],
+        ['json-formatter', 'Format JSON or put it on one line.'],
       ].map(([id, description]) =>
         button(
           [

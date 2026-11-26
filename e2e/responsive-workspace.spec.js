@@ -85,7 +85,7 @@ test('all three tools expose their main actions at tablet width', async ({ page 
   await startSession(page, 'Markdown Editor');
   const markdown = page.getByRole('textbox', { name: 'Markdown editor' });
   const markdownFile = page.waitForEvent('filechooser');
-  await button('Markdown file actions').tap();
+  await button('Markdown actions').tap();
   await page.getByRole('menuitem', { name: 'Open Markdown' }).tap();
   await (
     await markdownFile
@@ -95,13 +95,15 @@ test('all three tools expose their main actions at tablet width', async ({ page 
     buffer: Buffer.from('# Tablet layout'),
   });
   await expect(markdown).toContainText('Tablet layout');
-  await button('View options').tap();
+  await button('View').tap();
   await page.getByRole('menuitemcheckbox', { name: 'Line numbers' }).tap();
-  await button('Find').tap();
+  await button('View').tap();
+  await page.getByRole('menuitem', { name: 'Find', exact: true }).tap();
   await expect(page.locator('.md-find-widget')).toBeVisible();
   await page.keyboard.press('Escape');
   const markdownDownload = page.waitForEvent('download');
-  await button('Export Markdown').tap();
+  await button('Markdown actions').tap();
+  await page.getByRole('menuitem', { name: 'Export Markdown', exact: true }).tap();
   expect((await markdownDownload).suggestedFilename()).toMatch(/\.md$/);
   await page.keyboard.press('ControlOrMeta+s');
   await expect(page.locator('.save-status')).toHaveText('All changes saved');

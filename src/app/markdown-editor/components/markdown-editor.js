@@ -13,7 +13,7 @@ import {
 } from '../../file-transfer/public-api.js';
 import { createMarkdownEditor } from '../adapters/create-markdown-editor.js';
 import { readImageFile, MAX_IMAGE_BYTES } from '../functions/images.js';
-import { overflowActions, segmentedControl, toolToolbar } from '../../shared/ui.js';
+import { actionMenu, segmentedControl, toolToolbar } from '../../shared/ui.js';
 import { MAX_DOCUMENT_BYTES, utf8Size, normalize, safeLink } from '../functions/markdown.js';
 
 function textDialog(title, label, value) {
@@ -58,7 +58,6 @@ export function createMarkdownTool(state, id) {
     }, 4000);
   };
   host.append(editStatus);
-  const findButton = button('Find', () => editor.find(), { 'aria-expanded': false });
   const fail = (error) => {
     if (alive) {
       notice.textContent = message(error);
@@ -93,7 +92,6 @@ export function createMarkdownTool(state, id) {
         return true;
       },
       imageAction: (action, parts, range) => void imageAction(action, parts, range),
-      searchChanged: (open) => findButton?.setAttribute('aria-expanded', String(open)),
     },
   );
 
@@ -190,22 +188,26 @@ export function createMarkdownTool(state, id) {
     role: 'toolbar',
     'aria-label': 'Markdown formatting',
   });
-  const editable = [];
-  for (const [value, label] of [
-    ['live', 'Live Preview'],
-    ['source', 'Source'],
-    ['reading', 'Reading'],
+  for (const [value, label, iconName] of [
+    ['live', 'Live Preview', 'preview'],
+    ['source', 'Source', 'code'],
+    ['reading', 'Reading', 'reading'],
   ])
     modes.append(
       button(
-        label,
+        icon(iconName),
         () => {
           editor.setMode(value);
           mode = value;
           state.updateOptions(id, { mode: value });
           update();
         },
-        { 'aria-pressed': mode === value },
+        {
+          'aria-label': label,
+          title: label,
+          'aria-pressed': mode === value,
+          dataset: { mode: value },
+        },
       ),
     );
   const formatButtons = [
@@ -251,67 +253,74 @@ export function createMarkdownTool(state, id) {
     control.addEventListener('mousedown', (event) => event.preventDefault());
     formatBar.append(control);
   }
-  const open = button('Open Markdown', async () => {
-    const file = await chooseFile('.md,.markdown,.txt');
-    if (file) await importFiles([file]);
-  });
-  const image = button('Add image', async () => {
-    const file = await chooseFile('image/png,image/jpeg,.png,.jpg,.jpeg');
-    if (file) await insertImages([file]);
-  });
-  editable.push(open, image);
-  const wide = button(
-    'Wide',
-    () => state.updateOptions(id, { wide: !state.document(id).options.wide }),
-    { 'aria-pressed': false },
+  const viewMenu = actionMenu(
+    'View',
+    () => {
+      const options = state.document(id).options;
+      return [
+        {
+          label: 'Line numbers',
+          checked: options.lineNumbers !== false,
+          disabled: editor.reading,
+          action: () => state.updateOptions(id, { lineNumbers: options.lineNumbers === false }),
+        },
+        {
+          label: 'Table of contents',
+          checked: !!options.toc,
+          action: () => state.updateOptions(id, { toc: !options.toc }),
+        },
+        {
+          label: 'Wide',
+          checked: !!options.wide,
+          action: () => state.updateOptions(id, { wide: !options.wide }),
+        },
+        { label: 'Find', action: () => editor.find() },
+        {
+          label: 'Formatting toolbar',
+          checked: !options.toolbarHidden,
+          disabled: editor.reading,
+          action: () => state.updateOptions(id, { toolbarHidden: !options.toolbarHidden }),
+        },
+      ];
+    },
+    { iconName: 'view', className: 'md-menu-trigger' },
   );
-  const lineNumbers = button(
-    'Line numbers',
-    () =>
-      state.updateOptions(id, { lineNumbers: state.document(id).options.lineNumbers === false }),
-    { 'aria-pressed': true },
-  );
-  const toc = button(
-    'Table of contents',
-    () => state.updateOptions(id, { toc: !state.document(id).options.toc }),
-    { 'aria-pressed': false },
-  );
-  const copy = button('Copy Markdown', () => void copyText(editor.text()).catch(fail));
-  const view = element(
-    'section',
-    { className: 'markdown-tool tool-view', 'aria-label': 'Markdown Editor' },
-    toolToolbar(
-      'markdown',
-      filename.element,
-      open,
-      image,
-      copy,
-      overflowActions('Markdown file actions', open, image, copy),
-      button(
-        'Export Markdown',
-        () =>
+  const fileMenu = actionMenu(
+    'Markdown actions',
+    () => [
+      {
+        label: 'Open Markdown',
+        disabled: editor.reading,
+        action: async () => {
+          const file = await chooseFile('.md,.markdown,.txt');
+          if (file) await importFiles([file]);
+        },
+      },
+      {
+        label: 'Add image',
+        disabled: editor.reading,
+        action: async () => {
+          const file = await chooseFile('image/png,image/jpeg,.png,.jpg,.jpeg');
+          if (file) await insertImages([file]);
+        },
+      },
+      { label: 'Copy Markdown', action: () => void copyText(editor.text()).catch(fail) },
+      {
+        label: 'Export Markdown',
+        action: () =>
           downloadFile(
             editor.text(),
             sanitizeFileName(state.fileName(id), '.md'),
             'text/markdown;charset=utf-8',
           ),
-        { variant: 'primary' },
-      ),
-    ),
-    element(
-      'div',
-      { className: 'md-view-toolbar' },
-      modes,
-      element(
-        'div',
-        { className: 'toolbar-actions' },
-        lineNumbers,
-        toc,
-        wide,
-        overflowActions('View options', lineNumbers, toc, wide),
-        findButton,
-      ),
-    ),
+      },
+    ],
+    { iconName: 'more', className: 'md-menu-trigger' },
+  );
+  const view = element(
+    'section',
+    { className: 'markdown-tool tool-view', 'aria-label': 'Markdown Editor' },
+    toolToolbar('markdown', filename.element, modes, viewMenu, fileMenu),
     formatBar,
     notice,
     host,
@@ -334,21 +343,10 @@ export function createMarkdownTool(state, id) {
     if (!doc) return;
     filename.update();
     view.classList.toggle('md-wide', !!doc.options.wide);
-    wide.setAttribute('aria-pressed', String(!!doc.options.wide));
-    lineNumbers.setAttribute('aria-pressed', String(doc.options.lineNumbers !== false));
-    lineNumbers.hidden = mode === 'reading';
-    toc.setAttribute('aria-pressed', String(!!doc.options.toc));
     editor.setViewOptions(doc.options);
     for (const control of modes.children)
-      control.setAttribute(
-        'aria-pressed',
-        String(
-          control.textContent ===
-            { live: 'Live Preview', source: 'Source', reading: 'Reading' }[mode],
-        ),
-      );
-    formatBar.hidden = mode === 'reading';
-    editable.forEach((control) => (control.disabled = mode === 'reading'));
+      control.setAttribute('aria-pressed', String(control.dataset.mode === mode));
+    formatBar.hidden = mode === 'reading' || !!doc.options.toolbarHidden;
     host.dataset.mode = mode;
     editor.setTheme(state.appearance.theme === 'dark');
     if (editor.text() !== doc.source) editor.replace(doc.source);

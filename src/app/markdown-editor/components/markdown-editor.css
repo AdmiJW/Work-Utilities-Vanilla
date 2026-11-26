@@ -1,20 +1,28 @@
 .markdown-tool {
   min-width: 0;
 }
-.md-view-toolbar,
+.markdown-tool > .tool-toolbar {
+  flex-wrap: nowrap;
+}
+.markdown-tool > .tool-toolbar .toolbar-actions {
+  flex: none;
+  flex-wrap: nowrap;
+  gap: 6px;
+}
+.markdown-tool .export-filename {
+  min-width: 0;
+}
+.md-modes > button,
+.md-menu-trigger {
+  padding-inline: 8px;
+}
 .md-formatting {
   display: flex;
   align-items: center;
   gap: 6px;
-  flex-wrap: wrap;
   padding: 7px 18px;
   border-bottom: 1px solid var(--border);
   background: var(--panel);
-}
-.md-view-toolbar {
-  justify-content: space-between;
-}
-.md-formatting {
   flex-wrap: nowrap;
   overflow: auto hidden;
   flex-shrink: 0;
@@ -330,12 +338,14 @@ div.md-html-unit {
 }
 .md-outline {
   position: absolute;
-  top: 16px;
+  display: flex;
+  flex-direction: column;
+  top: var(--md-outline-top, 16px);
   right: 14px;
   z-index: 25;
   width: 250px;
   max-width: calc(100% - 28px);
-  max-height: 55%;
+  max-height: min(55%, calc(100% - var(--md-outline-top, 16px) - 12px));
   overflow: hidden;
   background: var(--panel);
   border: 1px solid var(--border);
@@ -348,13 +358,14 @@ div.md-html-unit {
 }
 .md-outline-heading {
   display: flex;
+  flex: none;
   align-items: center;
   justify-content: space-between;
   padding: 5px 8px;
   border-bottom: 1px solid var(--border);
 }
 .md-outline-list {
-  max-height: 36vh;
+  min-height: 0;
   overflow: auto;
   padding: 4px;
 }
@@ -426,7 +437,7 @@ div.md-html-unit {
   color: var(--text);
 }
 @media (max-width: 900px) {
-  .md-view-toolbar,
+  .markdown-tool > .tool-toolbar,
   .md-formatting {
     padding: 7px 10px;
   }

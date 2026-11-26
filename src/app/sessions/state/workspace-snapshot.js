@@ -1,6 +1,7 @@
 import { createWorkspaceBackup, readWorkspaceBackup } from '../functions/workspace-backup.js';
 import { exportBackupImages, restoreBackupImages } from '../functions/backup-images.js';
 import { validateImageBlob } from '../../shared/image-data.js';
+import { emptyToolCounters } from '../../shared/tool-details.js';
 
 /** Includes unsaved live drafts and cold retained sessions without changing the UI. */
 export async function snapshotWorkspace(state) {
@@ -70,7 +71,7 @@ function emptyWorkspace() {
   return {
     order: [],
     activeId: null,
-    counters: { 'sql-formatter': 0, 'output-analyzer': 0, 'markdown-editor': 0 },
+    counters: emptyToolCounters(),
   };
 }
 
